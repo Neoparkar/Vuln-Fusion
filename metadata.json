@@ -1,0 +1,6 @@
+{
+  "name": "VulnFusion",
+  "description": "Asset identity & vulnerability-management record correlation intelligence layer",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
