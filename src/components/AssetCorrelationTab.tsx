@@ -167,12 +167,12 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
           </div>
 
           {/* 4 Dynamic Metric Cards */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 lg:gap-4 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 shrink-0">
             {/* Asset Groups Card */}
-            <div className="bg-[#101B29] border border-[#1B3045] p-3.5 lg:p-4 rounded-xl space-y-1 min-w-[125px] transition-all hover:border-[#00B8FF]/30">
+            <div className="bg-[#101B29] border border-[#1B3045] p-4 lg:p-5 rounded-xl space-y-1.5 min-w-[130px] transition-all hover:border-[#00B8FF]/30">
               <div className="flex items-center justify-between text-[#00B8FF]">
                 <Server className="w-4 h-4" />
-                <span className="text-[10px] font-mono text-[#718197] uppercase">CLUSTER</span>
+                <span className="text-[10px] font-mono text-[#718197] uppercase tracking-wider">CLUSTER</span>
               </div>
               <div className="text-2xl lg:text-3xl font-semibold text-[#F4F7FB] font-mono tabular-nums pt-0.5">
                 {countAll}
@@ -181,10 +181,10 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
             </div>
 
             {/* Source Records Card */}
-            <div className="bg-[#101B29] border border-[#1B3045] p-3.5 lg:p-4 rounded-xl space-y-1 min-w-[125px] transition-all hover:border-[#2587FF]/30">
+            <div className="bg-[#101B29] border border-[#1B3045] p-4 lg:p-5 rounded-xl space-y-1.5 min-w-[130px] transition-all hover:border-[#2587FF]/30">
               <div className="flex items-center justify-between text-[#2587FF]">
                 <Database className="w-4 h-4" />
-                <span className="text-[10px] font-mono text-[#718197] uppercase">INGESTED</span>
+                <span className="text-[10px] font-mono text-[#718197] uppercase tracking-wider">INGESTED</span>
               </div>
               <div className="text-2xl lg:text-3xl font-semibold text-[#F4F7FB] font-mono tabular-nums pt-0.5">
                 {records.length}
@@ -193,10 +193,10 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
             </div>
 
             {/* Vulnerability Findings Card */}
-            <div className="bg-[#101B29] border border-[#1B3045] p-3.5 lg:p-4 rounded-xl space-y-1 min-w-[125px] transition-all hover:border-[#8B5CF6]/30">
+            <div className="bg-[#101B29] border border-[#1B3045] p-4 lg:p-5 rounded-xl space-y-1.5 min-w-[130px] transition-all hover:border-[#8B5CF6]/30">
               <div className="flex items-center justify-between text-[#8B5CF6]">
                 <Bug className="w-4 h-4" />
-                <span className="text-[10px] font-mono text-[#718197] uppercase">VULNS</span>
+                <span className="text-[10px] font-mono text-[#718197] uppercase tracking-wider">VULNS</span>
               </div>
               <div className="text-2xl lg:text-3xl font-semibold text-[#F4F7FB] font-mono tabular-nums pt-0.5">
                 {findings.length}
@@ -205,10 +205,10 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
             </div>
 
             {/* Potential Remediation Issues Card */}
-            <div className="bg-[#101B29] border border-[#1B3045] p-3.5 lg:p-4 rounded-xl space-y-1 min-w-[125px] transition-all hover:border-[#00D6A3]/30">
+            <div className="bg-[#101B29] border border-[#1B3045] p-4 lg:p-5 rounded-xl space-y-1.5 min-w-[130px] transition-all hover:border-[#00D6A3]/30">
               <div className="flex items-center justify-between text-[#00D6A3]">
                 <Layers className="w-4 h-4" />
-                <span className="text-[10px] font-mono text-[#718197] uppercase">ISSUES</span>
+                <span className="text-[10px] font-mono text-[#718197] uppercase tracking-wider">ISSUES</span>
               </div>
               <div className="text-2xl lg:text-3xl font-semibold text-[#F4F7FB] font-mono tabular-nums pt-0.5">
                 {findingGroups.length}
@@ -221,10 +221,10 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
       </div>
 
       {/* 2. Main Three-Column Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start min-h-[680px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start min-h-[700px]">
         
         {/* LEFT COLUMN: ASSET GROUPS BROWSER (~25% / 3 cols) */}
-        <div className="lg:col-span-3 bg-[#0B1420] border border-[#1B3045] rounded-2xl p-4 space-y-3 shadow-sm flex flex-col h-full min-h-[640px]">
+        <div className="lg:col-span-3 bg-[#0B1420] border border-[#1B3045] rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm flex flex-col h-full min-h-[660px]">
           
           {/* Header & Controls */}
           <div className="space-y-3 border-b border-[#1B3045] pb-3">
@@ -489,8 +489,8 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
 
               {/* Tab 1: Source Records View */}
               {centerTab === 'records' && (
-                <div className="space-y-3">
-                  <div className="space-y-2.5">
+                <div className="space-y-3.5">
+                  <div className="space-y-3">
                     {selectedCluster.memberRecordIds.map((recordId) => {
                       const record = getRecordDetails(recordId);
                       if (!record) return null;
@@ -499,7 +499,7 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
                       return (
                         <div
                           key={recordId}
-                          className="bg-[#101B29] border border-[#1B3045] rounded-xl p-4 space-y-2.5 text-xs transition hover:border-[#00B8FF]/30"
+                          className="bg-[#101B29] border border-[#1B3045] rounded-xl p-5 space-y-3 text-xs transition hover:border-[#00B8FF]/30"
                         >
                           <div className="flex items-center justify-between font-mono">
                             <div className="flex items-center gap-2">
@@ -545,11 +545,11 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
 
               {/* Tab 2: Identity Snapshot Grid */}
               {(centerTab === 'identity' || centerTab === 'records') && (
-                <div className="space-y-2 pt-1">
+                <div className="space-y-2.5 pt-1">
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-[#718197]">
                     Asset Identity Snapshot
                   </h3>
-                  <div className="grid grid-cols-2 gap-3 bg-[#101B29] p-4 rounded-xl border border-[#1B3045]">
+                  <div className="grid grid-cols-2 gap-4 bg-[#101B29] p-5 rounded-xl border border-[#1B3045]">
                     <div>
                       <span className="text-[#718197] text-[10px] font-bold uppercase block tracking-wider">
                         Hostname
@@ -591,8 +591,8 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
 
               {/* Tab 3: Correlation Evidence */}
               {centerTab === 'evidence' && (
-                <div className="space-y-3">
-                  <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-4 space-y-3">
+                <div className="space-y-3.5">
+                  <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-5 space-y-3.5">
                     <h3 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-[#00D6A3]" />
                       Deterministic Math Breakdown ({selectedCluster.confidence}%)
@@ -667,12 +667,12 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
         </div>
 
         {/* RIGHT COLUMN: CORRELATION VISUALIZATION & SIGNALS (~30% / 4 cols) */}
-        <div className="lg:col-span-4 bg-[#0B1420] border border-[#1B3045] rounded-2xl p-5 sm:p-6 space-y-5 shadow-sm min-h-[640px]">
+        <div className="lg:col-span-4 bg-[#0B1420] border border-[#1B3045] rounded-2xl p-5 sm:p-6 space-y-6 shadow-sm min-h-[660px]">
           {selectedCluster ? (
             <>
               {/* 1. Correlation Visualization Panel */}
-              <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-[#1B3045] pb-2.5">
+              <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-5 space-y-3.5">
+                <div className="flex items-center justify-between border-b border-[#1B3045] pb-3">
                   <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider flex items-center gap-2">
                     <Activity className="w-4 h-4 text-[#00B8FF]" />
                     Correlation Visualization
@@ -739,8 +739,8 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
               </div>
 
               {/* 2. Correlation Signals Panel */}
-              <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-4 space-y-3">
-                <div className="flex items-center justify-between border-b border-[#1B3045] pb-2.5">
+              <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-5 space-y-3.5">
+                <div className="flex items-center justify-between border-b border-[#1B3045] pb-3">
                   <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider flex items-center gap-2">
                     <ShieldCheck className="w-4 h-4 text-[#00D6A3]" />
                     Correlation Signals
@@ -750,9 +750,9 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
                   </span>
                 </div>
 
-                <div className="space-y-2 text-xs">
+                <div className="space-y-2.5 text-xs">
                   {selectedCluster.correlationEvidence.map((ev) => (
-                    <div key={ev.id} className="flex items-start gap-2 text-[#A8B7C9]">
+                    <div key={ev.id} className="flex items-start gap-2.5 text-[#A8B7C9]">
                       <CheckCircle2 className="w-4 h-4 text-[#00D6A3] shrink-0 mt-0.5" />
                       <div>
                         <span className="font-semibold text-[#F4F7FB] block">{ev.name}</span>
@@ -762,7 +762,7 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
                   ))}
 
                   {selectedCluster.conflictingAttributes.map((conf) => (
-                    <div key={conf.id} className="flex items-start gap-2 text-[#A8B7C9]">
+                    <div key={conf.id} className="flex items-start gap-2.5 text-[#A8B7C9]">
                       <AlertTriangle className="w-4 h-4 text-[#F5A623] shrink-0 mt-0.5" />
                       <div>
                         <span className="font-semibold text-[#F5A623] block">{conf.name}</span>
@@ -774,7 +774,7 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
               </div>
 
               {/* 3. AI Analyst Panel */}
-              <div className="bg-purple-950/20 border border-purple-500/30 rounded-xl p-4 space-y-3 shadow-[0_0_20px_rgba(168,85,247,0.08)]">
+              <div className="bg-purple-950/20 border border-purple-500/30 rounded-xl p-5 space-y-3.5 shadow-[0_0_20px_rgba(168,85,247,0.08)]">
                 <div className="flex items-center justify-between">
                   <h2 className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2">
                     <Sparkles className="w-4 h-4 text-purple-400" /> AI Analyst
@@ -790,7 +790,7 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
 
                 <button
                   onClick={() => onExplainAI(selectedCluster)}
-                  className="w-full py-2 bg-purple-900/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/30 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-purple-900/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/30 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2"
                 >
                   <span>Explain with AI Analyst</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -798,7 +798,7 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
               </div>
 
               {/* 4. Quick Actions Panel */}
-              <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-4 space-y-3">
+              <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-5 space-y-3.5">
                 <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider">
                   Quick Actions
                 </h2>
