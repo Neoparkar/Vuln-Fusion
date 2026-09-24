@@ -265,8 +265,363 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
         </div>
       </div>
 
-      {/* 2. Main Three-Column Workspace */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start min-h-[700px]">
+      {/* MOBILE SINGLE-COLUMN INVESTIGATION FLOW (lg:hidden) */}
+      <div className="block lg:hidden space-y-6">
+        
+        {/* 1. ASSET GROUP SELECTOR */}
+        <div className="bg-[#0B1420] border border-[#1B3045] rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-sm">
+          <div className="flex items-center justify-between border-b border-[#1B3045] pb-2.5">
+            <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider flex items-center gap-2">
+              <Server className="w-4 h-4 text-[#00B8FF]" />
+              1. Select Asset Group ({filteredClusters.length})
+            </h2>
+            <span className="text-[10px] font-mono text-[#718197] uppercase">Mobile View</span>
+          </div>
+
+          {/* Asset Dropdown Selector */}
+          <div>
+            <label className="text-[11px] font-mono text-[#718197] uppercase tracking-wider block mb-1.5">
+              Active Candidate Asset Group
+            </label>
+            <select
+              value={selectedAssetId}
+              onChange={(e) => setSelectedAssetId(e.target.value)}
+              className="w-full bg-[#101B29] border border-[#00B8FF]/40 text-[#F4F7FB] rounded-xl p-3 text-sm font-semibold focus:outline-none focus:ring-1 focus:ring-[#00B8FF] min-h-[48px]"
+            >
+              {filteredClusters.map((c) => (
+                <option key={c.underlyingAssetId} value={c.underlyingAssetId}>
+                  {c.canonicalHostname} — {c.correlationStatus === 'REVIEW_REQUIRED' ? 'Candidate Group' : 'Underlying Asset'} ({c.confidence}%)
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Search Assets Field */}
+          <div className="relative">
+            <Search className="absolute left-3 top-3 w-3.5 h-3.5 text-[#718197]" />
+            <input
+              type="text"
+              placeholder="Search assets..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#101B29] border border-[#1B3045] rounded-xl pl-9 pr-3 py-2 text-xs text-[#F4F7FB] placeholder-[#718197] focus:outline-none focus:border-[#00B8FF]/50 font-sans"
+            />
+          </div>
+
+          {/* Filter Pills */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-[11px]">
+            <button
+              onClick={() => setStatusFilter('ALL')}
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition min-h-[36px] ${
+                statusFilter === 'ALL'
+                  ? 'bg-[#00B8FF]/15 text-[#00B8FF] border border-[#00B8FF]/30 font-semibold'
+                  : 'bg-[#101B29] text-[#A8B7C9] hover:text-[#F4F7FB] border border-[#1B3045]'
+              }`}
+            >
+              All {countAll}
+            </button>
+            <button
+              onClick={() => setStatusFilter('CORRELATED')}
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition min-h-[36px] ${
+                statusFilter === 'CORRELATED'
+                  ? 'bg-[#00D6A3]/15 text-[#00D6A3] border border-[#00D6A3]/30 font-semibold'
+                  : 'bg-[#101B29] text-[#A8B7C9] hover:text-[#F4F7FB] border border-[#1B3045]'
+              }`}
+            >
+              Correlated {countCorrelated}
+            </button>
+            <button
+              onClick={() => setStatusFilter('REVIEW_REQUIRED')}
+              className={`px-3 py-1.5 rounded-lg font-medium whitespace-nowrap transition min-h-[36px] ${
+                statusFilter === 'REVIEW_REQUIRED'
+                  ? 'bg-[#F5A623]/15 text-[#F5A623] border border-[#F5A623]/30 font-semibold'
+                  : 'bg-[#101B29] text-[#A8B7C9] hover:text-[#F4F7FB] border border-[#1B3045]'
+              }`}
+            >
+              Review {countReview}
+            </button>
+          </div>
+        </div>
+
+        {selectedCluster && (
+          <>
+            {/* 2. SELECTED ASSET SUMMARY */}
+            <div className="bg-[#0B1420] border border-[#1B3045] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between border-b border-[#1B3045] pb-2.5">
+                <span className="text-[10px] font-mono text-[#00B8FF] uppercase tracking-wider font-bold">
+                  2. Selected Asset Summary
+                </span>
+                <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                  selectedCluster.correlationStatus === 'CORRELATED'
+                    ? 'bg-[#00D6A3]/15 text-[#00D6A3] border-[#00D6A3]/30'
+                    : selectedCluster.correlationStatus === 'REVIEW_REQUIRED'
+                    ? 'bg-[#F5A623]/15 text-[#F5A623] border-[#F5A623]/30'
+                    : 'bg-slate-800 text-slate-300 border-slate-700'
+                }`}>
+                  {selectedCluster.correlationStatus === 'REVIEW_REQUIRED' ? 'Candidate Asset Group' : selectedCluster.correlationStatus}
+                </span>
+              </div>
+
+              <div className="space-y-2">
+                <h3 className="text-xl font-extrabold text-[#F4F7FB]">
+                  {selectedCluster.canonicalHostname}
+                </h3>
+                <div className="text-xs text-[#A8B7C9] font-mono flex items-center justify-between flex-wrap gap-2">
+                  <span>ID: <strong className="text-[#00B8FF]">{selectedCluster.underlyingAssetId}</strong></span>
+                  <span>Confidence: <strong className="text-[#F4F7FB]">{selectedCluster.confidence}%</strong></span>
+                </div>
+              </div>
+
+              {/* Engine Metrics Bar */}
+              <div className="grid grid-cols-3 gap-2 bg-[#101B29] p-3 rounded-xl border border-[#1B3045] text-center text-xs">
+                <div>
+                  <span className="text-[10px] text-[#718197] font-mono block uppercase">Matched</span>
+                  <span className="font-bold text-[#00D6A3] text-sm">{selectedCluster.correlationEvidence.length}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#718197] font-mono block uppercase">Conflicts</span>
+                  <span className="font-bold text-[#F5A623] text-sm">{selectedCluster.conflictingAttributes.length}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-[#718197] font-mono block uppercase">Evaluated</span>
+                  <span className="font-bold text-[#00B8FF] text-sm">{selectedCluster.correlationEvidence.length + selectedCluster.conflictingAttributes.length}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. SOURCE RECORDS */}
+            <div className="bg-[#0B1420] border border-[#1B3045] rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+              <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider flex items-center justify-between border-b border-[#1B3045] pb-2.5">
+                <span className="flex items-center gap-2">
+                  <Database className="w-4 h-4 text-[#2587FF]" />
+                  3. Source Records ({selectedCluster.memberRecordIds.length})
+                </span>
+              </h2>
+
+              <div className="space-y-2">
+                {selectedCluster.memberRecordIds.map((recordId) => {
+                  const rec = getRecordDetails(recordId);
+                  const toolStyle = getToolBadgeStyle(rec?.sourceTool || 'QUALYS');
+
+                  return (
+                    <div key={recordId} className="bg-[#101B29] border border-[#1B3045] p-3 rounded-xl space-y-1.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-[#F4F7FB]">{recordId}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${toolStyle.bg}`}>
+                          {toolStyle.name}
+                        </span>
+                      </div>
+                      <div className="text-[#A8B7C9] flex items-center justify-between text-[11px]">
+                        <span>Method: {rec?.observationMethod.replace(/_/g, ' ') || 'AGENT'}</span>
+                        <span className="font-mono">{rec?.ipAddresses.join(', ') || 'N/A'}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* 4. IDENTITY PROFILE */}
+            <div className="bg-[#0B1420] border border-[#1B3045] rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+              <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider flex items-center gap-2 border-b border-[#1B3045] pb-2.5">
+                <ShieldCheck className="w-4 h-4 text-[#00D6A3]" />
+                4. Identity Profile
+              </h2>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                <div className="p-2.5 bg-[#101B29] rounded-xl border border-[#1B3045]">
+                  <span className="text-[#718197] text-[10px] font-mono block uppercase">Hostname</span>
+                  <span className="font-semibold text-[#F4F7FB]">{selectedCluster.canonicalHostname}</span>
+                </div>
+                <div className="p-2.5 bg-[#101B29] rounded-xl border border-[#1B3045]">
+                  <span className="text-[#718197] text-[10px] font-mono block uppercase">IP Addresses</span>
+                  <span className="font-semibold text-[#F4F7FB] font-mono">{selectedCluster.canonicalIpAddresses.join(', ') || 'None'}</span>
+                </div>
+                <div className="p-2.5 bg-[#101B29] rounded-xl border border-[#1B3045]">
+                  <span className="text-[#718197] text-[10px] font-mono block uppercase">BIOS UUID</span>
+                  <span className="font-semibold text-emerald-400 font-mono text-[11px] truncate block">{selectedCluster.canonicalBiosUuid || 'N/A'}</span>
+                </div>
+                <div className="p-2.5 bg-[#101B29] rounded-xl border border-[#1B3045]">
+                  <span className="text-[#718197] text-[10px] font-mono block uppercase">Cloud Resource ID</span>
+                  <span className="font-semibold text-emerald-400 font-mono text-[11px] truncate block">{selectedCluster.canonicalCloudResourceId || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 5. CORRELATION EVIDENCE */}
+            <div className="bg-[#0B1420] border border-[#1B3045] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
+              <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider flex items-center justify-between border-b border-[#1B3045] pb-2.5">
+                <span className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-[#00B8FF]" />
+                  5. Correlation Evidence
+                </span>
+              </h2>
+
+              {/* Supporting Evidence */}
+              <div className="space-y-2">
+                <div className="text-xs font-semibold text-[#00D6A3] flex items-center justify-between">
+                  <span>SUPPORTING EVIDENCE</span>
+                  <span className="font-mono text-[11px]">+{selectedCluster.correlationEvidence.reduce((sum, e) => sum + e.weight, 0)} pts</span>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs font-sans min-w-[500px]">
+                    <thead>
+                      <tr className="border-b border-[#1B3045] text-[#718197] text-[10px] font-mono uppercase">
+                        <th className="py-2 px-2">Signal</th>
+                        <th className="py-2 px-2 text-right">Weight</th>
+                        <th className="py-2 px-2">Detail</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-[#1B3045]/60 text-[#A8B7C9]">
+                      {selectedCluster.correlationEvidence.map((ev) => (
+                        <tr key={ev.id}>
+                          <td className="py-2 px-2 font-semibold text-[#00D6A3]">{ev.name}</td>
+                          <td className="py-2 px-2 text-right font-mono font-bold text-[#00D6A3]">+{ev.weight}</td>
+                          <td className="py-2 px-2 text-[11px] text-slate-300">{ev.description}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Conflicting Evidence */}
+              <div className="space-y-2 pt-2 border-t border-[#1B3045]">
+                <div className="text-xs font-semibold text-[#F5A623] flex items-center justify-between">
+                  <span>CONFLICTING EVIDENCE</span>
+                  <span className="font-mono text-[11px]">{selectedCluster.conflictingAttributes.reduce((sum, c) => sum + c.weight, 0)} penalty</span>
+                </div>
+                {selectedCluster.conflictingAttributes.length === 0 ? (
+                  <div className="p-3 rounded-xl bg-[#101B29] border border-[#00D6A3]/20 text-xs text-[#00D6A3] font-medium flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-[#00D6A3] shrink-0" />
+                    <span>Zero conflicting attributes detected.</span>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs font-sans min-w-[500px]">
+                      <thead>
+                        <tr className="border-b border-[#1B3045] text-[#718197] text-[10px] font-mono uppercase">
+                          <th className="py-2 px-2">Signal</th>
+                          <th className="py-2 px-2 text-right">Penalty</th>
+                          <th className="py-2 px-2">Detail</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#1B3045]/60 text-[#A8B7C9]">
+                        {selectedCluster.conflictingAttributes.map((conf) => (
+                          <tr key={conf.id}>
+                            <td className="py-2 px-2 font-semibold text-[#F5A623]">{conf.name}</td>
+                            <td className="py-2 px-2 text-right font-mono font-bold text-[#F5A623]">{conf.weight}</td>
+                            <td className="py-2 px-2 text-[11px] text-slate-300">{conf.description}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 6. RELATED FINDINGS */}
+            <div className="bg-[#0B1420] border border-[#1B3045] rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+              <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider flex items-center gap-2 border-b border-[#1B3045] pb-2.5">
+                <Bug className="w-4 h-4 text-violet-400" />
+                6. Related Findings ({relatedFindings.length})
+              </h2>
+
+              {relatedFindings.length === 0 ? (
+                <div className="p-4 rounded-xl bg-[#101B29] text-center text-xs text-[#718197]">
+                  No vulnerability findings associated with this candidate group.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {relatedFindings.map((f) => (
+                    <div key={f.findingId} className="bg-[#101B29] border border-[#1B3045] p-3 rounded-xl text-xs space-y-1">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-[#00B8FF]">{f.vulnerabilityId}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${
+                          f.severity === 'CRITICAL' ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                          f.severity === 'HIGH' ? 'bg-orange-500/10 text-orange-400 border-orange-500/20' :
+                          'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                        }`}>
+                          {f.severity}
+                        </span>
+                      </div>
+                      <div className="font-semibold text-[#F4F7FB]">{f.title}</div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* 7. AI ANALYST */}
+            <div className="bg-purple-950/20 border border-purple-500/30 rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+              <div className="flex items-center justify-between border-b border-purple-500/20 pb-2">
+                <h2 className="text-xs font-bold text-purple-300 uppercase tracking-wider flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-purple-400" />
+                  7. AI Analyst
+                </h2>
+                <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                  NON-AUTHORITATIVE
+                </span>
+              </div>
+              <p className="text-xs text-[#A8B7C9]">
+                Request a Gemini AI explanation sidecar for {selectedCluster.canonicalHostname}.
+              </p>
+              <button
+                type="button"
+                onClick={() => onExplainAI(selectedCluster)}
+                className="w-full py-3 bg-purple-900/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/30 rounded-xl text-xs font-semibold transition flex items-center justify-center gap-2 min-h-[44px]"
+              >
+                <Sparkles className="w-4 h-4 text-purple-400" />
+                <span>Ask AI Analyst</span>
+              </button>
+            </div>
+
+            {/* 8. ANALYST ACTIONS */}
+            <div className="bg-[#0B1420] border border-[#1B3045] rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+              <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider border-b border-[#1B3045] pb-2.5">
+                8. Analyst Actions
+              </h2>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => onViewEvidence(selectedCluster)}
+                  className="py-2.5 px-3 bg-[#101B29] hover:bg-[#1B3045]/60 text-[#F4F7FB] border border-[#1B3045] rounded-xl font-medium transition text-center flex items-center justify-center gap-1.5 min-h-[44px]"
+                >
+                  <Eye className="w-4 h-4 text-[#00B8FF]" /> View Evidence
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onAcceptCorrelation(selectedCluster.underlyingAssetId)}
+                  className="py-2.5 px-3 bg-emerald-950/20 hover:bg-emerald-900/30 text-emerald-300 border border-emerald-500/30 rounded-xl font-semibold transition flex items-center justify-center gap-1.5 min-h-[44px]"
+                >
+                  <Check className="w-4 h-4 text-emerald-400" /> Accept
+                </button>
+              </div>
+            </div>
+
+            {/* 9. EXPORT EVIDENCE */}
+            <div className="bg-[#0B1420] border border-[#1B3045] rounded-2xl p-4 sm:p-5 space-y-3 shadow-sm">
+              <h2 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider border-b border-[#1B3045] pb-2.5">
+                9. Export Evidence
+              </h2>
+              <div className="flex justify-start">
+                <ExportEvidenceMenu
+                  cluster={selectedCluster}
+                  records={records}
+                  findings={findings}
+                  findingGroups={findingGroups}
+                  exceptions={exceptions}
+                  onToastNotice={setToastNotice ? (msg, err) => setToastNotice({ message: msg, isError: !!err }) : undefined}
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* 2. Main Three-Column Workspace (Desktop lg:grid) */}
+      <div className="hidden lg:grid grid-cols-12 gap-6 items-start min-h-[700px]">
         
         {/* LEFT COLUMN: ASSET GROUPS BROWSER (~25% / 3 cols) */}
         <div className="lg:col-span-3 bg-[#0B1420] border border-[#1B3045] rounded-2xl p-5 sm:p-6 space-y-4 shadow-sm flex flex-col h-full min-h-[660px]">
