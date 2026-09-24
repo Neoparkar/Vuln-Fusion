@@ -46,6 +46,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   const qualysRecords = records.filter(r => r.sourceTool === 'Qualys');
   const tenableRecords = records.filter(r => r.sourceTool === 'Tenable');
   const rapid7Records = records.filter(r => r.sourceTool === 'Rapid7');
+  const wizRecords = records.filter(r => r.sourceTool === 'Wiz');
 
   const getMethods = (sourceRecords: AssetRecord[]) => {
     return Array.from(new Set(sourceRecords.map(r => r.observationMethod)));
@@ -390,12 +391,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             </span>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* Qualys */}
             <div className="bg-[#151A21] border border-[#1E2631] rounded-xl p-4 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-100 text-base">QUALYS</span>
-                <span className="text-2xl text-blue-400 font-extrabold">{qualysRecords.length}</span>
+                <span className="text-2xl text-cyan-400 font-extrabold">{qualysRecords.length}</span>
               </div>
               <div className="text-xs text-[#94A3B8] space-y-1.5 border-t border-[#1A222D] pt-2.5">
                 <div className="font-medium">Observation Methods:</div>
@@ -411,7 +412,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             <div className="bg-[#151A21] border border-[#1E2631] rounded-xl p-4 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-100 text-base">TENABLE</span>
-                <span className="text-2xl text-emerald-400 font-extrabold">{tenableRecords.length}</span>
+                <span className="text-2xl text-violet-400 font-extrabold">{tenableRecords.length}</span>
               </div>
               <div className="text-xs text-[#94A3B8] space-y-1.5 border-t border-[#1A222D] pt-2.5">
                 <div className="font-medium">Observation Methods:</div>
@@ -427,7 +428,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             <div className="bg-[#151A21] border border-[#1E2631] rounded-xl p-4 space-y-2.5">
               <div className="flex items-center justify-between">
                 <span className="font-bold text-slate-100 text-base">RAPID7</span>
-                <span className="text-2xl text-rose-400 font-extrabold">{rapid7Records.length}</span>
+                <span className="text-2xl text-orange-400 font-extrabold">{rapid7Records.length}</span>
               </div>
               <div className="text-xs text-[#94A3B8] space-y-1.5 border-t border-[#1A222D] pt-2.5">
                 <div className="font-medium">Observation Methods:</div>
@@ -438,6 +439,25 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                 ))}
               </div>
             </div>
+
+            {/* Wiz */}
+            <div className="bg-[#151A21] border border-[#1E2631] rounded-xl p-4 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-slate-100 text-base">WIZ</span>
+                <span className="text-2xl text-emerald-400 font-extrabold">{wizRecords.length}</span>
+              </div>
+              <div className="text-xs text-[#94A3B8] space-y-1.5 border-t border-[#1A222D] pt-2.5">
+                <div className="font-medium">Observation Methods:</div>
+                {getMethods(wizRecords).map(m => (
+                  <span key={m} className="inline-block px-2 py-0.5 rounded bg-[#10141A] border border-[#1E2631] text-slate-200 font-medium mr-1 mb-1">
+                    {m}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="text-xs text-[#64748B] italic bg-[#151A21]/50 p-2.5 rounded-lg border border-[#1E2631]">
+            Qualys, Tenable, Rapid7, and Wiz are used strictly as synthetic source labels. No production scanner or client telemetry is used.
           </div>
         </div>
 

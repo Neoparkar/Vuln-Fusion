@@ -1,7 +1,13 @@
 import React, { useState } from 'react';
-import { runDataQualityTests, runCriticalScenariosTest, runSecurityValidationChecks } from '../engine/testRunner';
+import {
+  runDataQualityTests,
+  runCriticalScenariosTest,
+  runSecurityValidationChecks,
+  runExportValidationTests,
+  runV2FocusedValidationTests,
+} from '../engine/testRunner';
 import { AuditLogEntry } from '../types/vulnfusion';
-import { CheckCircle2, ShieldCheck, Play, Lock, Database, Clock, Server } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, Play, Lock, Database, Clock, Server, Download, Target } from 'lucide-react';
 
 interface TestRunnerTabProps {
   auditLogs: AuditLogEntry[];
@@ -10,7 +16,9 @@ interface TestRunnerTabProps {
 export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
   const [dataQualityResults, setDataQualityResults] = useState(runDataQualityTests());
   const [criticalTests, setCriticalTests] = useState(runCriticalScenariosTest());
+  const [v2FocusedTests, setV2FocusedTests] = useState(runV2FocusedValidationTests());
   const [securityChecks, setSecurityChecks] = useState(runSecurityValidationChecks());
+  const [exportTests, setExportTests] = useState(runExportValidationTests());
   const [isRunning, setIsRunning] = useState(false);
 
   const handleRunAllTests = () => {
@@ -18,15 +26,22 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
     setTimeout(() => {
       setDataQualityResults(runDataQualityTests());
       setCriticalTests(runCriticalScenariosTest());
+      setV2FocusedTests(runV2FocusedValidationTests());
       setSecurityChecks(runSecurityValidationChecks());
+      setExportTests(runExportValidationTests());
       setIsRunning(false);
     }, 300);
   };
 
-  const allPassed =
-    dataQualityResults.every(r => r.status === 'PASSED') &&
-    criticalTests.every(t => t.passed) &&
-    securityChecks.every(s => s.status === 'PASSED');
+  const totalCount = dataQualityResults.length + criticalTests.length + v2FocusedTests.length + securityChecks.length + exportTests.length;
+  const passedCount =
+    dataQualityResults.filter(r => r.status === 'PASSED').length +
+    criticalTests.filter(t => t.passed).length +
+    v2FocusedTests.filter(v => v.passed).length +
+    securityChecks.filter(s => s.status === 'PASSED').length +
+    exportTests.filter(e => e.passed).length;
+
+  const allPassed = passedCount === totalCount;
 
   // Categorize security checks into AI Security and Application Security
   const aiSecurityChecks = securityChecks.filter(s =>
@@ -50,7 +65,7 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
           </div>
           <h2 className="text-2xl font-extrabold text-slate-100">Automated Validation Suite</h2>
           <p className="text-sm text-[#94A3B8] leading-relaxed">
-            Automated verification for data quality, correlation determinism, AI sidecar security, and application reliability.
+            Automated verification for data quality, correlation determinism, export evidence integrity, AI sidecar security, and application reliability.
           </p>
         </div>
 
@@ -69,11 +84,11 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
           <CheckCircle2 className="w-6 h-6 text-emerald-400 shrink-0" />
           <div>
             <strong className="text-slate-100 text-base block">{allPassed ? 'Validation Suite Complete — 100% Passed' : 'Review Required'}</strong>
-            <span className="text-[#94A3B8] text-sm">Deterministic stability, input sanitization, and security boundaries verified.</span>
+            <span className="text-[#94A3B8] text-sm">Deterministic stability, correlation engine integrity, export evidence standards, and security boundaries verified.</span>
           </div>
         </div>
         <span className="px-4 py-1.5 rounded-xl bg-[#151A21] border border-[#1E2631] text-emerald-400 font-bold text-sm">
-          19 / 19 PASSED
+          {passedCount} / {totalCount} PASSED
         </span>
       </div>
 
@@ -82,7 +97,7 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
         <div className="flex items-center gap-2 border-b border-[#1A222D] pb-3">
           <Database className="w-4 h-4 text-cyan-400" />
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-            DATA QUALITY & NORMALIZATION (5 TESTS)
+            DATA QUALITY & NORMALIZATION ({dataQualityResults.length} TESTS)
           </h3>
         </div>
 
@@ -107,7 +122,7 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
         <div className="flex items-center gap-2 border-b border-[#1A222D] pb-3">
           <ShieldCheck className="w-4 h-4 text-emerald-400" />
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
-            CORRELATION INTEGRITY (8 SCENARIOS)
+            CORRELATION INTEGRITY ({criticalTests.length} SCENARIOS)
           </h3>
         </div>
 
@@ -132,7 +147,65 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
         </div>
       </div>
 
-      {/* Section 3: AI SECURITY */}
+      {/* Section 3: CORRELATION EVIDENCE EXPORT TESTS (E1-E14) */}
+      <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl p-6 space-y-4 shadow-sm">
+        <div className="flex items-center gap-2 border-b border-[#1A222D] pb-3">
+          <Download className="w-4 h-4 text-sky-400" />
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
+            CORRELATION EVIDENCE EXPORT VALIDATION ({exportTests.length} TESTS: E1-E14)
+          </h3>
+        </div>
+
+        <div className="space-y-3">
+          {exportTests.map((test) => (
+            <div key={test.testId} className="bg-[#151A21] border border-[#1E2631] rounded-xl p-4 flex items-center justify-between gap-4 text-sm">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sky-400 font-bold text-sm font-mono">{test.testId}</span>
+                  <strong className="text-slate-200 text-sm font-semibold">{test.testName}</strong>
+                </div>
+                <span className="text-xs text-[#94A3B8] block font-mono">{test.details}</span>
+              </div>
+              <span className="px-3 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold shrink-0">
+                PASS
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Section 3.5: V2 FOCUSED SCENARIO VALIDATION (V1-V18) */}
+      <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl p-6 space-y-4 shadow-sm">
+        <div className="flex items-center gap-2 border-b border-[#1A222D] pb-3">
+          <Target className="w-4 h-4 text-emerald-400" />
+          <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200">
+            V2 FOCUSED SCENARIO VALIDATION ({v2FocusedTests.length} TESTS: V1-V18)
+          </h3>
+        </div>
+
+        <div className="space-y-3">
+          {v2FocusedTests.map((test) => (
+            <div key={test.testId} className="bg-[#151A21] border border-[#1E2631] rounded-xl p-4 flex items-center justify-between gap-4 text-sm">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-emerald-400 font-bold text-sm font-mono">{test.testId}</span>
+                  <strong className="text-slate-200 text-sm font-semibold">{test.testName}</strong>
+                </div>
+                <span className="text-xs text-[#94A3B8] block">{test.details}</span>
+              </div>
+              <span className={`px-3 py-1 rounded-lg text-xs font-bold shrink-0 border ${
+                test.passed
+                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
+                  : 'bg-rose-500/10 text-rose-400 border-rose-500/20'
+              }`}>
+                {test.passed ? 'PASS' : 'FAIL'}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Section 4: AI SECURITY */}
       <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl p-6 space-y-4 shadow-sm">
         <div className="flex items-center gap-2 border-b border-[#1A222D] pb-3">
           <Lock className="w-4 h-4 text-purple-400" />
@@ -156,7 +229,7 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
         </div>
       </div>
 
-      {/* Section 4 & 5: APPLICATION SECURITY & RELIABILITY */}
+      {/* Section 5: APPLICATION SECURITY & RELIABILITY */}
       <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl p-6 space-y-4 shadow-sm">
         <div className="flex items-center gap-2 border-b border-[#1A222D] pb-3">
           <Server className="w-4 h-4 text-blue-400" />

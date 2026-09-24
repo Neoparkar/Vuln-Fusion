@@ -28,7 +28,7 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
   externalSearchQuery = '',
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedTool, setSelectedTool] = useState<'ALL' | 'QUALYS' | 'TENABLE' | 'RAPID7'>('ALL');
+  const [selectedTool, setSelectedTool] = useState<'ALL' | 'QUALYS' | 'TENABLE' | 'RAPID7' | 'WIZ'>('ALL');
   const [selectedRecordId, setSelectedRecordId] = useState<string>(records[0]?.recordId || '');
   const [isRawExpanded, setIsRawExpanded] = useState(false);
 
@@ -96,6 +96,12 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
           badgeBg: 'bg-orange-500/10 text-orange-400 border-orange-500/20',
           dotColor: 'bg-orange-400',
           label: 'RAPID7',
+        };
+      case 'Wiz':
+        return {
+          badgeBg: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+          dotColor: 'bg-emerald-400',
+          label: 'WIZ',
         };
       default:
         return {
@@ -178,7 +184,7 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
           </div>
 
           <div className="flex items-center gap-1.5 bg-[#151A21] p-1.5 rounded-xl border border-[#1E2631] w-full sm:w-auto overflow-x-auto">
-            {(['ALL', 'QUALYS', 'TENABLE', 'RAPID7'] as const).map(tool => {
+            {(['ALL', 'QUALYS', 'TENABLE', 'RAPID7', 'WIZ'] as const).map(tool => {
               const isSelected = selectedTool === tool;
               return (
                 <button

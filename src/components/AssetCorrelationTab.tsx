@@ -15,6 +15,7 @@ import {
   ShieldAlert,
   AlertTriangle,
   CheckCircle2,
+  AlertCircle,
   Search,
   Eye,
   Sparkles,
@@ -29,6 +30,7 @@ import {
   ArrowUpDown,
   Cpu
 } from 'lucide-react';
+import { ExportEvidenceMenu } from './ExportEvidenceMenu';
 
 interface AssetCorrelationTabProps {
   clusters: UnderlyingAsset[];
@@ -61,14 +63,29 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'CORRELATED' | 'REVIEW_REQUIRED' | 'SEPARATE'>('ALL');
+  const [sourceFilter, setSourceFilter] = useState<'ALL' | 'QUALYS' | 'TENABLE' | 'RAPID7' | 'WIZ'>('ALL');
   const [selectedAssetId, setSelectedAssetId] = useState<string>(clusters[0]?.underlyingAssetId || '');
   const [centerTab, setCenterTab] = useState<'records' | 'identity' | 'evidence' | 'findings'>('records');
+  const [toastNotice, setToastNotice] = useState<{ message: string; isError?: boolean } | null>(null);
+
+  const handleToastNotice = (message: string, isError = false) => {
+    setToastNotice({ message, isError });
+    setTimeout(() => {
+      setToastNotice(null);
+    }, 4000);
+  };
 
   const effectiveSearch = (externalSearchQuery || searchQuery).toLowerCase().trim();
 
-  // Dynamic filter logic
+  // Dynamic filter logic (status + source tool)
   const filteredClusters = clusters.filter(cluster => {
     const matchesStatus = statusFilter === 'ALL' || cluster.correlationStatus === statusFilter;
+    
+    // Check if cluster contains records matching source filter
+    const matchesSource = sourceFilter === 'ALL' || cluster.representativeRecords.some(
+      r => r.sourceTool.toUpperCase() === sourceFilter
+    );
+
     const q = effectiveSearch;
     const matchesSearch =
       !q ||
@@ -77,7 +94,7 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
       cluster.clusterSummary.toLowerCase().includes(q) ||
       cluster.memberRecordIds.some(id => id.toLowerCase().includes(q)) ||
       (cluster.canonicalIpAddresses && cluster.canonicalIpAddresses.some(ip => ip.includes(q)));
-    return matchesStatus && matchesSearch;
+    return matchesStatus && matchesSource && matchesSearch;
   });
 
   const selectedCluster =
@@ -90,6 +107,12 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
   const countCorrelated = clusters.filter(c => c.correlationStatus === 'CORRELATED').length;
   const countReview = clusters.filter(c => c.correlationStatus === 'REVIEW_REQUIRED').length;
   const countSeparate = clusters.filter(c => c.correlationStatus === 'SEPARATE').length;
+
+  // Dynamic source record counts
+  const qualysCount = records.filter(r => r.sourceTool === 'Qualys').length;
+  const tenableCount = records.filter(r => r.sourceTool === 'Tenable').length;
+  const rapid7Count = records.filter(r => r.sourceTool === 'Rapid7').length;
+  const wizCount = records.filter(r => r.sourceTool === 'Wiz').length;
 
   // Helper to fetch details for a source record
   const getRecordDetails = (recordId: string): AssetRecord | undefined => {
@@ -127,6 +150,12 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
           dot: 'bg-[#F97316]',
           name: 'Rapid7',
         };
+      case 'WIZ':
+        return {
+          bg: 'bg-[#00D6A3]/10 text-[#00D6A3] border-[#00D6A3]/25',
+          dot: 'bg-[#00D6A3]',
+          name: 'Wiz',
+        };
       default:
         return {
           bg: 'bg-slate-800 text-slate-300 border-slate-700',
@@ -147,7 +176,23 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn font-sans pb-10">
+    <div className="space-y-6 animate-fadeIn font-sans pb-10 relative">
+      
+      {/* Toast Notice Banner */}
+      {toastNotice && (
+        <div className={`fixed top-20 right-6 z-50 px-4 py-2.5 rounded-xl border shadow-xl flex items-center gap-2.5 text-xs font-semibold animate-fadeIn ${
+          toastNotice.isError
+            ? 'bg-rose-950/90 text-rose-200 border-rose-500/40 shadow-rose-900/20'
+            : 'bg-[#101B29]/95 text-[#00B8FF] border-[#00B8FF]/40 shadow-[0_0_15px_rgba(0,184,255,0.2)]'
+        }`}>
+          {toastNotice.isError ? (
+            <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-[#00D6A3] shrink-0" />
+          )}
+          <span>{toastNotice.message}</span>
+        </div>
+      )}
       
       {/* 1. Page Header & Dynamic Top Metrics */}
       <div className="bg-[#0B1420] border border-[#1B3045] rounded-2xl p-6 sm:p-7 shadow-sm">
@@ -405,21 +450,44 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
 
                 </div>
 
-                {/* Explanation sentence */}
-                <div className="text-xs text-[#A8B7C9] leading-relaxed flex items-center justify-between gap-3">
-                  <p>
+                {/* Explanation sentence & Action buttons */}
+                <div className="bg-[#0B1420]/80 p-3 rounded-xl border border-[#1B3045] text-xs text-[#A8B7C9] leading-relaxed flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <p className="flex-1">
                     <strong className="text-[#F4F7FB] font-semibold">{selectedCluster.memberRecordIds.length} source record(s)</strong> from {Array.from(new Set(selectedCluster.representativeRecords.map(r => r.sourceTool))).join(', ')} deterministically correlate to this underlying asset.
                   </p>
                   
-                  {onNavigateTab && (
+                  <div className="flex items-center gap-2 shrink-0 flex-wrap">
+                    {onNavigateTab && (
+                      <button
+                        type="button"
+                        onClick={() => onNavigateTab('findings')}
+                        className="px-3 py-1.5 bg-[#00B8FF]/10 hover:bg-[#00B8FF]/20 text-[#00B8FF] border border-[#00B8FF]/20 text-xs font-semibold rounded-lg transition flex items-center gap-1 shrink-0"
+                        title="View findings for this asset group"
+                      >
+                        <span>VIEW FINDINGS</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+
                     <button
-                      onClick={() => onNavigateTab('findings')}
-                      className="px-3 py-1.5 bg-[#00B8FF]/10 hover:bg-[#00B8FF]/20 text-[#00B8FF] border border-[#00B8FF]/20 text-xs font-semibold rounded-lg transition flex items-center gap-1 shrink-0"
+                      type="button"
+                      onClick={() => onExplainAI(selectedCluster)}
+                      className="px-3 py-1.5 bg-purple-950/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/30 text-xs font-semibold rounded-lg transition flex items-center gap-1 shrink-0"
+                      title="Ask AI Analyst for explanation"
                     >
-                      <span>VIEW FINDINGS</span>
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                      <span>ASK AI ANALYST</span>
                     </button>
-                  )}
+
+                    <ExportEvidenceMenu
+                      cluster={selectedCluster}
+                      records={records}
+                      findings={findings}
+                      findingGroups={findingGroups}
+                      exceptions={exceptions}
+                      onToastNotice={handleToastNotice}
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -570,6 +638,24 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
 
                     <div>
                       <span className="text-[#718197] text-[10px] font-bold uppercase block tracking-wider">
+                        BIOS UUID
+                      </span>
+                      <span className="text-[#F4F7FB] text-xs font-mono truncate block mt-0.5">
+                        {selectedCluster.canonicalBiosUuid || 'N/A'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[#718197] text-[10px] font-bold uppercase block tracking-wider">
+                        Cloud Resource ID / ARN
+                      </span>
+                      <span className="text-[#00B8FF] text-xs font-mono truncate block mt-0.5">
+                        {selectedCluster.canonicalCloudResourceId || selectedCluster.representativeRecords[0]?.cloudInstanceId || 'N/A'}
+                      </span>
+                    </div>
+
+                    <div>
+                      <span className="text-[#718197] text-[10px] font-bold uppercase block tracking-wider">
                         MAC Address
                       </span>
                       <span className="text-[#F4F7FB] text-xs font-mono block mt-0.5">
@@ -591,39 +677,123 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
 
               {/* Tab 3: Correlation Evidence */}
               {centerTab === 'evidence' && (
-                <div className="space-y-3.5">
-                  <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-5 space-y-3.5">
-                    <h3 className="text-xs font-semibold text-[#F4F7FB] uppercase tracking-wider flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-[#00D6A3]" />
-                      Deterministic Math Breakdown ({selectedCluster.confidence}%)
-                    </h3>
-
-                    <div className="space-y-2 text-xs">
-                      {selectedCluster.correlationEvidence.map((ev) => (
-                        <div key={ev.id} className="flex items-center justify-between p-2.5 rounded-lg bg-[#0B1420] border border-[#1B3045]">
-                          <div>
-                            <span className="font-semibold text-[#F4F7FB] block">{ev.name}</span>
-                            <span className="text-[11px] text-[#A8B7C9]">{ev.description}</span>
-                          </div>
-                          <span className="font-mono font-bold text-[#00D6A3] text-xs shrink-0 pl-2">
-                            +{ev.weight} pts
-                          </span>
-                        </div>
-                      ))}
-
-                      {selectedCluster.conflictingAttributes.map((conf) => (
-                        <div key={conf.id} className="flex items-center justify-between p-2.5 rounded-lg bg-[#0B1420] border border-[#F5A623]/30">
-                          <div>
-                            <span className="font-semibold text-[#F5A623] block">{conf.name}</span>
-                            <span className="text-[11px] text-[#A8B7C9]">{conf.description}</span>
-                          </div>
-                          <span className="font-mono font-bold text-[#F5A623] text-xs shrink-0 pl-2">
-                            {conf.weight} pts
-                          </span>
-                        </div>
-                      ))}
-                    </div>
+                <div className="space-y-5">
+                  
+                  {/* Layer Notice Header */}
+                  <div className="p-3.5 rounded-xl bg-[#0B1420] border border-[#1B3045] flex items-center justify-between text-xs text-[#A8B7C9]">
+                    <span className="font-semibold text-[#00B8FF] flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-[#00B8FF]" />
+                      DETERMINISTIC CORRELATION RESULT
+                    </span>
+                    <span className="font-mono text-[11px]">
+                      Confidence: <strong className="text-[#F4F7FB]">{selectedCluster.confidence}%</strong> ({selectedCluster.correlationEvidence.length} supporting / {selectedCluster.conflictingAttributes.length} conflicting)
+                    </span>
                   </div>
+
+                  {/* SECTION 1: SUPPORTING EVIDENCE */}
+                  <div className="bg-[#101B29] border border-[#1B3045] rounded-xl p-5 space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-[#1B3045] pb-2.5">
+                      <h3 className="text-xs font-bold text-[#00D6A3] uppercase tracking-wider flex items-center gap-2">
+                        <span>SUPPORTING EVIDENCE</span>
+                        <span className="px-2 py-0.5 rounded bg-[#00D6A3]/10 border border-[#00D6A3]/20 font-mono text-[10px]">
+                          +{selectedCluster.correlationEvidence.reduce((sum, e) => sum + e.weight, 0)} total weight
+                        </span>
+                      </h3>
+                      <span className="text-[11px] text-[#A8B7C9] font-mono">{selectedCluster.correlationEvidence.length} signal(s) matched</span>
+                    </div>
+
+                    {selectedCluster.correlationEvidence.length === 0 ? (
+                      <p className="text-xs text-[#718197] italic py-2">No positive supporting signals recorded.</p>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs font-sans">
+                          <thead>
+                            <tr className="border-b border-[#1B3045] text-[#718197] text-[10px] font-mono uppercase tracking-wider">
+                              <th className="py-2 px-3">Signal</th>
+                              <th className="py-2 px-3">Category</th>
+                              <th className="py-2 px-3 text-center">Result</th>
+                              <th className="py-2 px-3 text-right">Weight</th>
+                              <th className="py-2 px-3">Supporting Records</th>
+                              <th className="py-2 px-3">Evidence Details</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#1B3045]/60 text-[#A8B7C9]">
+                            {selectedCluster.correlationEvidence.map((ev) => (
+                              <tr key={ev.id} className="hover:bg-[#152232] transition">
+                                <td className="py-2.5 px-3 font-semibold text-[#F4F7FB]">{ev.name}</td>
+                                <td className="py-2.5 px-3 font-mono text-[11px] text-[#00B8FF]">{ev.id.replace('sig-', '').toUpperCase()}</td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#00D6A3]/10 text-[#00D6A3] border border-[#00D6A3]/20">
+                                    MATCHED
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono font-bold text-[#00D6A3]">+{ev.weight}</td>
+                                <td className="py-2.5 px-3 font-mono text-[11px] text-slate-300">
+                                  {selectedCluster.memberRecordIds.slice(0, 3).join(', ')}
+                                  {selectedCluster.memberRecordIds.length > 3 ? ` +${selectedCluster.memberRecordIds.length - 3}` : ''}
+                                </td>
+                                <td className="py-2.5 px-3 text-[11px] text-slate-300">{ev.description}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* SECTION 2: CONFLICTING EVIDENCE */}
+                  <div className="bg-[#101B29] border border-[#F5A623]/20 rounded-xl p-5 space-y-3.5">
+                    <div className="flex items-center justify-between border-b border-[#1B3045] pb-2.5">
+                      <h3 className="text-xs font-bold text-[#F5A623] uppercase tracking-wider flex items-center gap-2">
+                        <span>CONFLICTING EVIDENCE</span>
+                        <span className="px-2 py-0.5 rounded bg-[#F5A623]/10 border border-[#F5A623]/20 font-mono text-[10px]">
+                          {selectedCluster.conflictingAttributes.reduce((sum, c) => sum + c.weight, 0)} total penalty
+                        </span>
+                      </h3>
+                      <span className="text-[11px] text-[#A8B7C9] font-mono">{selectedCluster.conflictingAttributes.length} conflict(s) detected</span>
+                    </div>
+
+                    {selectedCluster.conflictingAttributes.length === 0 ? (
+                      <div className="p-3 rounded-lg bg-[#0B1420] border border-[#00D6A3]/20 text-xs text-[#00D6A3] font-medium flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-[#00D6A3] shrink-0" />
+                        <span>Zero conflicting attributes detected. High deterministic correlation confidence.</span>
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-left text-xs font-sans">
+                          <thead>
+                            <tr className="border-b border-[#1B3045] text-[#718197] text-[10px] font-mono uppercase tracking-wider">
+                              <th className="py-2 px-3">Signal</th>
+                              <th className="py-2 px-3">Category</th>
+                              <th className="py-2 px-3 text-center">Result</th>
+                              <th className="py-2 px-3 text-right">Penalty</th>
+                              <th className="py-2 px-3">Conflicting Records</th>
+                              <th className="py-2 px-3">Conflict Detail</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-[#1B3045]/60 text-[#A8B7C9]">
+                            {selectedCluster.conflictingAttributes.map((conf) => (
+                              <tr key={conf.id} className="hover:bg-[#152232] transition">
+                                <td className="py-2.5 px-3 font-semibold text-[#F5A623]">{conf.name}</td>
+                                <td className="py-2.5 px-3 font-mono text-[11px] text-[#F5A623]">{conf.id.replace('conf-', '').toUpperCase()}</td>
+                                <td className="py-2.5 px-3 text-center">
+                                  <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#F5A623]/10 text-[#F5A623] border border-[#F5A623]/20">
+                                    CONFLICT
+                                  </span>
+                                </td>
+                                <td className="py-2.5 px-3 text-right font-mono font-bold text-[#F5A623]">{conf.weight}</td>
+                                <td className="py-2.5 px-3 font-mono text-[11px] text-slate-300">
+                                  {selectedCluster.memberRecordIds.slice(0, 3).join(', ')}
+                                </td>
+                                <td className="py-2.5 px-3 text-[11px] text-slate-300">{conf.description}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+
                 </div>
               )}
 

@@ -68,6 +68,7 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* 1. Zone 1 (Left): Brand Wordmark & Shield Logo */}
       <div className="flex items-center gap-6 shrink-0">
         <button
+          type="button"
           onClick={() => setActiveTab('overview')}
           className="flex items-center gap-3 group focus:outline-none"
           title="VulnFusion Asset Intelligence — Authoritative Engine"
@@ -95,6 +96,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           return (
             <button
               key={item.id}
+              type="button"
               onClick={() => setActiveTab(item.id)}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-2 relative ${
                 isActive

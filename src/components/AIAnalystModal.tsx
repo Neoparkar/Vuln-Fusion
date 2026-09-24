@@ -224,7 +224,7 @@ export const AIAnalystModal: React.FC<AIAnalystModalProps> = ({ asset, onClose, 
             {!loading && !error && explanation && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between text-xs text-[#64748B] font-medium border-b border-[#1E2631] pb-2">
-                  <span>Model: Gemini 3.8 Flash (Server-Side Proxy)</span>
+                  <span>Model: Server-Side Gemini</span>
                   <span className="text-emerald-400 flex items-center gap-1.5 font-semibold">
                     <CheckCircle2 className="w-3.5 h-3.5" /> Grounded Sidecar Explanation
                   </span>

@@ -11,9 +11,51 @@ export function evaluatePair(recA: NormalizedAssetRecord, recB: NormalizedAssetR
   const conflicts: CorrelationSignal[] = [];
 
   // 1. Check Strong Signals
+  // BIOS UUID match vs conflict
+  if (recA.normalizedBiosUuid && recB.normalizedBiosUuid) {
+    if (recA.normalizedBiosUuid === recB.normalizedBiosUuid) {
+      signals.push({
+        id: 'sig-bios-uuid',
+        category: 'STRONG',
+        name: 'Exact BIOS / Hardware UUID Match',
+        description: `Hardware BIOS UUID matches: "${recA.biosUuid}"`,
+        weight: 50,
+      });
+    } else {
+      conflicts.push({
+        id: 'conf-bios-uuid',
+        category: 'CONFLICT',
+        name: 'Conflicting BIOS UUIDs',
+        description: `Hardware UUID mismatch: "${recA.biosUuid}" vs "${recB.biosUuid}"`,
+        weight: -45,
+      });
+    }
+  }
+
+  // Cloud Resource ID match vs conflict (Wiz / Cloud posture)
+  if (recA.normalizedCloudResourceId && recB.normalizedCloudResourceId) {
+    if (recA.normalizedCloudResourceId === recB.normalizedCloudResourceId) {
+      signals.push({
+        id: 'sig-cloud-resource',
+        category: 'STRONG',
+        name: 'Exact Cloud Resource ID Match',
+        description: `Cloud security posture resource identifier matches: "${recA.cloudResourceId}"`,
+        weight: 45,
+      });
+    } else {
+      conflicts.push({
+        id: 'conf-cloud-resource',
+        category: 'CONFLICT',
+        name: 'Incompatible Cloud Resource IDs',
+        description: `Cloud resource ID mismatch: "${recA.cloudResourceId}" vs "${recB.cloudResourceId}"`,
+        weight: -35,
+      });
+    }
+  }
+
   // Agent ID match
-  if (recA.agentId && recB.agentId) {
-    if (recA.agentId === recB.agentId) {
+  if (recA.normalizedAgentId && recB.normalizedAgentId) {
+    if (recA.normalizedAgentId === recB.normalizedAgentId) {
       signals.push({
         id: 'sig-agent-id',
         category: 'STRONG',
@@ -33,8 +75,8 @@ export function evaluatePair(recA: NormalizedAssetRecord, recB: NormalizedAssetR
   }
 
   // Cloud Instance ID match
-  if (recA.cloudInstanceId && recB.cloudInstanceId) {
-    if (recA.cloudInstanceId === recB.cloudInstanceId) {
+  if (recA.normalizedCloudInstanceId && recB.normalizedCloudInstanceId) {
+    if (recA.normalizedCloudInstanceId === recB.normalizedCloudInstanceId) {
       signals.push({
         id: 'sig-cloud-id',
         category: 'STRONG',
@@ -54,8 +96,8 @@ export function evaluatePair(recA: NormalizedAssetRecord, recB: NormalizedAssetR
   }
 
   // Serial Number match vs conflict
-  if (recA.serialNumber && recB.serialNumber) {
-    if (recA.serialNumber === recB.serialNumber) {
+  if (recA.normalizedSerialNumber && recB.normalizedSerialNumber) {
+    if (recA.normalizedSerialNumber === recB.normalizedSerialNumber) {
       signals.push({
         id: 'sig-serial',
         category: 'STRONG',
@@ -204,8 +246,8 @@ export function evaluatePair(recA: NormalizedAssetRecord, recB: NormalizedAssetR
   let confidence = 50;
 
   // Fatal conflict checks
-  const hasFatalConflict = conflicts.some(c => c.id === 'conf-serial' || c.id === 'conf-os' || c.id === 'conf-cloud-id');
-  const hasStrongIdentifierMatch = signals.some(s => ['sig-agent-id', 'sig-cloud-id', 'sig-serial', 'sig-mac'].includes(s.id));
+  const hasFatalConflict = conflicts.some(c => c.id === 'conf-serial' || c.id === 'conf-os' || c.id === 'conf-cloud-id' || c.id === 'conf-bios-uuid' || c.id === 'conf-cloud-resource');
+  const hasStrongIdentifierMatch = signals.some(s => ['sig-bios-uuid', 'sig-cloud-resource', 'sig-agent-id', 'sig-cloud-id', 'sig-serial', 'sig-mac'].includes(s.id));
   const hasIpAndHostnameMatch = sharedIps.length > 0 && signals.some(s => s.id === 'sig-hostname' || s.id === 'sig-hostname-variant');
 
   if (hasFatalConflict && !hasStrongIdentifierMatch) {
@@ -292,6 +334,12 @@ export function runCorrelationEngine(records: AssetRecord[]): UnderlyingAsset[] 
     const osList = Array.from(new Set(clusterMemberRecords.map(r => r.operatingSystem).filter(Boolean))) as string[];
     const canonicalOs = osList.length > 0 ? osList.join(' / ') : 'Unknown OS';
 
+    const biosUuids = clusterMemberRecords.map(r => r.biosUuid).filter(Boolean) as string[];
+    const canonicalBiosUuid = biosUuids.length > 0 ? biosUuids[0] : undefined;
+
+    const cloudResourceIds = clusterMemberRecords.map(r => r.cloudResourceId || r.cloudInstanceId).filter(Boolean) as string[];
+    const canonicalCloudResourceId = cloudResourceIds.length > 0 ? cloudResourceIds[0] : undefined;
+
     underlyingAssets.push({
       underlyingAssetId,
       memberRecordIds: clusterMemberRecords.map(r => r.recordId),
@@ -303,6 +351,8 @@ export function runCorrelationEngine(records: AssetRecord[]): UnderlyingAsset[] 
       canonicalHostname,
       canonicalIpAddresses: allIps,
       canonicalOs,
+      canonicalBiosUuid,
+      canonicalCloudResourceId,
       representativeRecords: clusterMemberRecords,
       clusterSummary: `${clusterMemberRecords.length} record(s) from ${Array.from(new Set(clusterMemberRecords.map(r => r.sourceTool))).join(', ')}`,
     });
