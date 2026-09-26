@@ -63,7 +63,7 @@ export function evaluatePair(recA: NormalizedAssetRecord, recB: NormalizedAssetR
         description: `Both records report identical agent identifier: "${recA.agentId}"`,
         weight: 50,
       });
-    } else {
+    } else if (recA.sourceTool === recB.sourceTool) {
       conflicts.push({
         id: 'conf-agent-id',
         category: 'CONFLICT',
@@ -116,7 +116,7 @@ export function evaluatePair(recA: NormalizedAssetRecord, recB: NormalizedAssetR
     }
   }
 
-  // MAC Address match
+  // MAC Address match vs conflict
   if (recA.normalizedMac && recB.normalizedMac) {
     if (recA.normalizedMac === recB.normalizedMac) {
       signals.push({
@@ -125,6 +125,14 @@ export function evaluatePair(recA: NormalizedAssetRecord, recB: NormalizedAssetR
         name: 'Exact MAC Address Match',
         description: `MAC address matches: "${recA.macAddress}"`,
         weight: 35,
+      });
+    } else {
+      conflicts.push({
+        id: 'conf-mac',
+        category: 'CONFLICT',
+        name: 'Conflicting MAC Addresses',
+        description: `MAC mismatch: "${recA.macAddress}" vs "${recB.macAddress}"`,
+        weight: -35,
       });
     }
   }
@@ -245,21 +253,27 @@ export function evaluatePair(recA: NormalizedAssetRecord, recB: NormalizedAssetR
   let status: CorrelationStatus = 'REVIEW_REQUIRED';
   let confidence = 50;
 
-  // Fatal conflict checks
-  const hasFatalConflict = conflicts.some(c => c.id === 'conf-serial' || c.id === 'conf-os' || c.id === 'conf-cloud-id' || c.id === 'conf-bios-uuid' || c.id === 'conf-cloud-resource');
+  // Fatal hardware/cloud conflict checks
+  const hasHardwareConflict = conflicts.some(c => c.id === 'conf-bios-uuid' || c.id === 'conf-cloud-id' || c.id === 'conf-cloud-resource' || c.id === 'conf-mac');
+  const hasAttributeConflict = conflicts.some(c => c.id === 'conf-os' || c.id === 'conf-serial');
   const hasStrongIdentifierMatch = signals.some(s => ['sig-bios-uuid', 'sig-cloud-resource', 'sig-agent-id', 'sig-cloud-id', 'sig-serial', 'sig-mac'].includes(s.id));
   const hasIpAndHostnameMatch = sharedIps.length > 0 && signals.some(s => s.id === 'sig-hostname' || s.id === 'sig-hostname-variant');
 
-  if (hasFatalConflict && !hasStrongIdentifierMatch) {
-    status = 'REVIEW_REQUIRED';
-    confidence = 35;
-  } else if (hasStrongIdentifierMatch || (hasIpAndHostnameMatch && conflicts.length === 0)) {
-    status = 'CORRELATED';
-    confidence = Math.min(95, Math.max(70, 60 + netScore));
+  if (hasHardwareConflict) {
+    status = 'SEPARATE';
+    confidence = 85;
+  } else if (hasStrongIdentifierMatch || hasIpAndHostnameMatch) {
+    if (hasAttributeConflict) {
+      status = 'REVIEW_REQUIRED';
+      confidence = 50;
+    } else {
+      status = 'CORRELATED';
+      confidence = Math.min(95, Math.max(70, 60 + netScore));
+    }
   } else if (netScore >= 45 && conflicts.length === 0) {
     status = 'CORRELATED';
     confidence = Math.min(85, 50 + netScore);
-  } else if (netScore >= 25) {
+  } else if (netScore >= 25 && conflicts.length === 0) {
     status = 'REVIEW_REQUIRED';
     confidence = 50;
   } else {
@@ -297,8 +311,8 @@ export function runCorrelationEngine(records: AssetRecord[]): UnderlyingAsset[] 
       // Evaluate against the primary record or existing cluster members
       const evalResult = evaluatePair(recA, recB);
 
-      // If correlated or review required with strong ties, group them into the same cluster
-      if (evalResult.status === 'CORRELATED' || (evalResult.status === 'REVIEW_REQUIRED' && evalResult.signals.length >= 2)) {
+      // If correlated or review required, group them into the same cluster
+      if (evalResult.status === 'CORRELATED' || evalResult.status === 'REVIEW_REQUIRED') {
         clusterMemberRecords.push(recB);
         assignedRecordIds.add(recB.recordId);
         allSignals.push(...evalResult.signals);
@@ -315,8 +329,6 @@ export function runCorrelationEngine(records: AssetRecord[]): UnderlyingAsset[] 
     // If cluster has multiple records or single record
     if (clusterMemberRecords.length === 1) {
       clusterStatus = 'SEPARATE';
-    } else if (allConflicts.length > 0 && clusterStatus !== 'REVIEW_REQUIRED') {
-      clusterStatus = 'REVIEW_REQUIRED';
     }
 
     // Deduplicate signals and conflicts

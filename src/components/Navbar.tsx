@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import {
-  Layers,
-  Network,
-  Database,
-  CheckSquare,
-  Bug,
+  VulnFusionBrandIcon,
+  ExecutiveIntelligenceIcon,
+  AssetCorrelationIcon,
+  FindingsIntelligenceIcon,
+  DeterministicEvidenceIcon,
+  TestCommandCenterIcon,
+} from './icons/VulnFusionIcons';
+import {
   Sparkles,
-  Shield,
   User,
   Search,
   X,
@@ -41,33 +43,33 @@ export const Navbar: React.FC<NavbarProps> = ({
     {
       id: 'overview' as const,
       label: 'Overview',
-      icon: Layers,
+      icon: ExecutiveIntelligenceIcon,
     },
     {
       id: 'correlation' as const,
       label: 'Asset Correlation',
       shortLabel: 'Assets',
-      icon: Network,
+      icon: AssetCorrelationIcon,
       badge: reviewCount > 0 ? `${reviewCount}` : undefined,
     },
     {
       id: 'findings' as const,
       label: 'Finding Correlation',
       shortLabel: 'Findings',
-      icon: Bug,
+      icon: FindingsIntelligenceIcon,
     },
     {
       id: 'evidence' as const,
       label: 'Evidence Explorer',
       shortLabel: 'Evidence',
-      icon: Database,
+      icon: DeterministicEvidenceIcon,
     },
     {
       id: 'tests' as const,
       label: 'Test Suite',
       shortLabel: 'Test Suite',
-      icon: CheckSquare,
-      badge: '19',
+      icon: TestCommandCenterIcon,
+      badge: '77',
     },
   ];
 
@@ -92,8 +94,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             className="flex items-center gap-2.5 group focus:outline-none min-h-[44px]"
             title="VulnFusion Asset Intelligence — Authoritative Engine"
           >
-            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-[#00B8FF]/20 to-blue-600/10 border border-[#00B8FF]/40 text-[#00B8FF] flex items-center justify-center shadow-[0_0_15px_rgba(0,184,255,0.18)] transition-all group-hover:scale-105 group-hover:border-[#00B8FF]">
-              <Shield className="w-5 h-5 text-[#00B8FF]" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0B1420] border border-[#00B8FF]/40 flex items-center justify-center shadow-[0_0_15px_rgba(0,184,255,0.18)] transition-all group-hover:scale-105 group-hover:border-[#00B8FF]">
+              <VulnFusionBrandIcon size={24} />
             </div>
             <div className="text-left">
               <span className="font-extrabold text-sm sm:text-base tracking-tight text-[#F4F7FB] block leading-tight group-hover:text-[#00B8FF] transition-colors">

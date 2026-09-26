@@ -1,4 +1,5 @@
 import { VulnerabilityFinding, FindingCorrelationGroup, CorrelationSignal, CorrelationStatus } from '../types/vulnfusion';
+import { SYNTHETIC_FINDINGS } from '../data/syntheticFindings';
 
 export function runFindingCorrelationEngine(findings: VulnerabilityFinding[]): FindingCorrelationGroup[] {
   const assignedFindingIds = new Set<string>();
@@ -53,7 +54,9 @@ export function runFindingCorrelationEngine(findings: VulnerabilityFinding[]): F
           if (findingA.affectedVersion && findingB.affectedVersion) {
             const verA = findingA.affectedVersion.trim().toLowerCase();
             const verB = findingB.affectedVersion.trim().toLowerCase();
-            if (verA === verB) {
+            const baseA = verA.split(/[-+~]/)[0];
+            const baseB = verB.split(/[-+~]/)[0];
+            if (verA === verB || (baseA && baseB && baseA === baseB) || verA.startsWith(verB) || verB.startsWith(verA)) {
               signals.push({
                 id: 'sig-same-version',
                 category: 'STRONG',
@@ -140,7 +143,7 @@ export function runFindingCorrelationEngine(findings: VulnerabilityFinding[]): F
 }
 
 export function runFindingTestCases() {
-  const findings = require('../data/syntheticFindings').SYNTHETIC_FINDINGS;
+  const findings = SYNTHETIC_FINDINGS;
   const groups = runFindingCorrelationEngine(findings);
   
   return {

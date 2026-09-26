@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { AssetRecord, UnderlyingAsset, SourceTool } from '../types/vulnfusion';
 import {
-  Database,
   Search,
   CheckCircle2,
   AlertTriangle,
@@ -10,9 +9,16 @@ import {
   ArrowRight,
   Calendar,
   Layers,
-  ShieldCheck,
   FileCode
 } from 'lucide-react';
+import {
+  DeterministicEvidenceIcon,
+  SourceIntelligenceIcon,
+  AssetIntelligenceIcon,
+  SecurityIntelligenceIcon,
+  CloudInfrastructureIcon,
+} from './icons/VulnFusionIcons';
+import { SourceLogo } from './SourceLogo';
 
 interface EvidenceExplorerTabProps {
   records: AssetRecord[];
@@ -133,39 +139,48 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
       {/* 1. Page Header & Summary Metrics */}
       <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl p-6 sm:p-7 space-y-5 shadow-sm">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-[#1A222D] pb-5">
-          <div className="space-y-1.5">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider">
-              <Database className="w-3.5 h-3.5" /> Investigation Workspace
+          <div className="space-y-1.5 max-w-2xl">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider">
+              <SourceIntelligenceIcon size={16} glow /> Deterministic Telemetry Workspace
             </div>
             <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">
               RAW TELEMETRY INSPECTOR
             </h1>
             <p className="text-sm text-[#94A3B8]">
-              Inspect source records before deterministic correlation.
+              Inspect source scanner records before and after deterministic correlation.
             </p>
           </div>
 
           {/* Compact Summary Metrics */}
           <div className="flex items-center gap-4 sm:gap-6 bg-[#151A21] border border-[#1E2631] px-5 py-3 rounded-xl shrink-0">
-            <div>
-              <div className="text-2xl font-extrabold text-slate-100 font-mono tabular-nums">
-                {records.length}
+            <div className="flex items-center gap-3">
+              <SourceIntelligenceIcon size={22} />
+              <div>
+                <div className="text-2xl font-extrabold text-slate-100 font-mono tabular-nums">
+                  {records.length}
+                </div>
+                <div className="text-xs text-[#94A3B8] font-medium">Source Records</div>
               </div>
-              <div className="text-xs text-[#94A3B8] font-medium">Source Records</div>
             </div>
             <div className="w-px h-8 bg-[#26303E]" />
-            <div>
-              <div className="text-2xl font-extrabold text-blue-400 font-mono tabular-nums">
-                {clusters.length > 0 ? clusters.length : 8}
+            <div className="flex items-center gap-3">
+              <AssetIntelligenceIcon size={22} />
+              <div>
+                <div className="text-2xl font-extrabold text-blue-400 font-mono tabular-nums">
+                  {clusters.length > 0 ? clusters.length : 8}
+                </div>
+                <div className="text-xs text-[#94A3B8] font-medium">Underlying Assets</div>
               </div>
-              <div className="text-xs text-[#94A3B8] font-medium">Underlying Assets</div>
             </div>
             <div className="w-px h-8 bg-[#26303E]" />
-            <div>
-              <div className="text-2xl font-extrabold text-slate-200 font-mono tabular-nums">
-                {uniqueTools.length}
+            <div className="flex items-center gap-3">
+              <CloudInfrastructureIcon size={22} />
+              <div>
+                <div className="text-2xl font-extrabold text-slate-200 font-mono tabular-nums">
+                  {uniqueTools.length}
+                </div>
+                <div className="text-xs text-[#94A3B8] font-medium">Source Tools</div>
               </div>
-              <div className="text-xs text-[#94A3B8] font-medium">Source Tools</div>
             </div>
           </div>
         </div>
@@ -190,13 +205,14 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
                 <button
                   key={tool}
                   onClick={() => setSelectedTool(tool)}
-                  className={`px-4 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition ${
+                  className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition flex items-center gap-1.5 ${
                     isSelected
                       ? 'bg-blue-600 text-white shadow-sm'
                       : 'text-[#94A3B8] hover:text-slate-200 hover:bg-[#181E26]'
                   }`}
                 >
-                  {tool}
+                  {tool !== 'ALL' && <SourceLogo sourceTool={tool} size={14} />}
+                  <span>{tool}</span>
                 </button>
               );
             })}
@@ -238,9 +254,12 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2 w-full">
-                      <span className="font-mono font-bold text-slate-100 text-sm">
-                        {record.recordId}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <SourceLogo sourceTool={record.sourceTool} size={18} />
+                        <span className="font-mono font-bold text-slate-100 text-sm">
+                          {record.recordId}
+                        </span>
+                      </div>
                       <span className={`px-2 py-0.5 rounded text-[11px] font-bold border ${toolInfo.badgeBg}`}>
                         {toolInfo.label}
                       </span>
@@ -289,7 +308,8 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
               <div className="space-y-4 border-b border-[#1A222D] pb-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <SourceLogo sourceTool={selectedRecord.sourceTool} size={24} />
                       <span className="font-mono text-lg font-extrabold text-blue-400 bg-blue-500/10 px-3 py-1 rounded-lg border border-blue-500/20">
                         {selectedRecord.recordId}
                       </span>
@@ -331,7 +351,7 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
 
                 {/* Concise Deterministic State Explanation */}
                 <div className="bg-[#151A21] border border-[#1E2631] rounded-xl p-4 text-sm text-slate-200 leading-relaxed flex items-start gap-3">
-                  <ShieldCheck className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+                  <DeterministicEvidenceIcon size={20} className="shrink-0 mt-0.5" />
                   <div>
                     {associatedCluster ? (
                       associatedCluster.correlationStatus === 'CORRELATED' ? (
@@ -405,7 +425,7 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-[#64748B] flex items-center gap-2">
-                    <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                    <DeterministicEvidenceIcon size={16} />
                     CORRELATION EVIDENCE
                   </h3>
                   <span className="text-xs text-[#64748B] font-medium">Deterministic Match Signals</span>
@@ -646,7 +666,7 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
             /* 18. Empty State */
             <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
               <div className="p-4 rounded-2xl bg-[#151A21] border border-[#1E2631] text-[#64748B]">
-                <Database className="w-8 h-8 text-blue-400" />
+                <SourceIntelligenceIcon size={32} glow />
               </div>
               <div className="space-y-1 max-w-md">
                 <h3 className="text-lg font-bold text-slate-100">SELECT A SOURCE RECORD</h3>

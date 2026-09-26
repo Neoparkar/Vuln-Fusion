@@ -78,7 +78,7 @@ export function normalizeAssetRecord(record: AssetRecord): NormalizedAssetRecord
   const netbiosName = record.netbiosName ? String(record.netbiosName).trim() : null;
   
   const ipAddresses = Array.isArray(record.ipAddresses)
-    ? record.ipAddresses.map(ip => String(ip).trim()).filter(ip => ip.length > 0)
+    ? record.ipAddresses.map(ip => String(ip).trim())
     : [];
 
   const ipv6Addresses = Array.isArray(record.ipv6Addresses)

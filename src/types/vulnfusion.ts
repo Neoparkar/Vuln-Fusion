@@ -49,7 +49,7 @@ export interface AssetRecord {
 
   ipAddresses: string[];
   ipv6Addresses?: string[];
-  macAddress: string | null;
+  macAddress?: string | null;
   macAddresses?: string[];
   networkInterfaces?: NetworkInterfaceInfo[];
 
@@ -60,13 +60,13 @@ export interface AssetRecord {
   osArchitecture?: string | null;
   osType?: string | null;
 
-  agentId: string | null;
+  agentId?: string | null;
   agentType?: string | null;
 
   cloudProvider?: 'AWS' | 'AZURE' | 'GCP' | 'OTHER' | null;
   cloudAccountId?: string | null;
   cloudRegion?: string | null;
-  cloudInstanceId: string | null;
+  cloudInstanceId?: string | null;
   cloudResourceId?: string | null;
 
   serialNumber?: string | null;
@@ -125,6 +125,71 @@ export interface NormalizedAssetRecord extends AssetRecord {
   malformedReason?: string;
 }
 
+export type AssetLifecycleStatus = 'ACTIVE' | 'AGING' | 'STALE' | 'COVERAGE_DISAGREEMENT' | 'ARCHIVED' | 'UNKNOWN';
+
+export type ArchiveReason =
+  | 'ASSET_DECOMMISSIONED'
+  | 'ASSET_REPLACED'
+  | 'CLOUD_RESOURCE_TERMINATED'
+  | 'DUPLICATE_RESOLVED'
+  | 'NO_LONGER_MANAGED'
+  | 'OTHER';
+
+export interface AssetArchiveRecord {
+  assetGroupId: string;
+  canonicalHostname: string;
+  isArchived: boolean;
+  archivedAt: string;
+  archivedBy: string;
+  reason: ArchiveReason;
+  reasonText: string;
+  archiveNotes?: string;
+  preservedFirstSeen: string | null;
+  preservedLastSeen: string | null;
+  preservedRecordCount: number;
+  preservedFindingCount: number;
+  reactivatedAt?: string;
+  reactivatedBySource?: SourceTool;
+  reactivationRecordId?: string;
+  reactivationReason?: string;
+  wasAutoReactivated?: boolean;
+}
+
+export interface LifecyclePolicyConfig {
+  activeThresholdDays: number; // default 14
+  agingThresholdDays: number;  // default 30
+  staleThresholdDays: number;  // default 60
+  archiveEligibleThresholdDays: number; // default 90 (configurable)
+}
+
+export interface SourceObservationSummary {
+  sourceTool: SourceTool;
+  recordCount: number;
+  firstSeen: string | null;
+  lastSeen: string | null;
+  ageDays: number | null;
+  observationMethods: ObservationMethod[];
+  status: 'ACTIVE' | 'AGING' | 'STALE' | 'NOT_REPORTING';
+}
+
+export interface AssetLifecycleIntelligence {
+  firstSeen: string | null;
+  lastSeen: string | null;
+  ageSinceLastSeenDays: number | null;
+  lifecycleStatus: AssetLifecycleStatus;
+  sourceObservationSummary: SourceObservationSummary[];
+  hasDisagreement: boolean;
+  disagreementReason?: string;
+  totalLifespanDays: number | null;
+  isArchiveEligible: boolean;
+  archiveThresholdDays: number;
+  isArchived: boolean;
+  archiveRecord?: AssetArchiveRecord;
+  wasAutoReactivated?: boolean;
+  reactivatedAt?: string;
+  reactivatedBySource?: SourceTool;
+}
+
 export interface UnderlyingAsset {
   underlyingAssetId: string;
   memberRecordIds: string[];
@@ -140,6 +205,7 @@ export interface UnderlyingAsset {
   canonicalCloudResourceId?: string;
   representativeRecords: AssetRecord[];
   clusterSummary: string;
+  archiveMetadata?: AssetArchiveRecord;
 }
 
 // Analyst Review & Exceptions

@@ -173,6 +173,12 @@ export const AIAnalystModal: React.FC<AIAnalystModalProps> = ({ asset, onClose, 
               </span>
             </div>
 
+            {/* Clear Authority Boundary Note */}
+            <div className="p-3 bg-purple-950/20 border border-purple-500/20 rounded-xl text-xs text-purple-200/90 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-purple-400 shrink-0" />
+              <span>Gemini explains the evidence. It does not determine correlation.</span>
+            </div>
+
             {/* 1. Loading State */}
             {loading && (
               <div className="bg-[#151A21] border border-[#1E2631] rounded-2xl p-8 flex flex-col items-center justify-center space-y-3 text-center">
