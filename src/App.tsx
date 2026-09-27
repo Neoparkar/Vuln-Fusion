@@ -22,13 +22,18 @@ import { AssetCorrelationTab } from './components/AssetCorrelationTab';
 import { FindingCorrelationTab } from './components/FindingCorrelationTab';
 import { EvidenceExplorerTab } from './components/EvidenceExplorerTab';
 import { TestRunnerTab } from './components/TestRunnerTab';
+import { AdminManagementTab } from './components/AdminManagementTab';
 import { EvidenceModal } from './components/EvidenceModal';
 import { ExceptionModal } from './components/ExceptionModal';
 import { AIAnalystModal } from './components/AIAnalystModal';
-import { ShieldCheck, Sparkles, CheckCircle2, Archive, X } from 'lucide-react';
+import { LoginScreen } from './components/LoginScreen';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import { RBACProvider } from './context/RBACContext';
+import { ShieldCheck, Sparkles, CheckCircle2, Archive, X, Loader2 } from 'lucide-react';
 import { NavTabId } from './components/Sidebar';
 
-export function App() {
+function MainWorkspace() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTabId>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [targetAssetGroupId, setTargetAssetGroupId] = useState<string>('');
@@ -157,10 +162,8 @@ export function App() {
 
   // Ingest Simulated Telemetry Observation -> Test Automatic Reappearance
   const handleSimulateObservation = (newRecord: AssetRecord) => {
-    // 1. Add record to records
     setRecords(prev => [newRecord, ...prev]);
 
-    // 2. Identify matching cluster by deterministic signals
     const matchingCluster = clusters.find(c => {
       if (newRecord.biosUuid && c.canonicalBiosUuid && newRecord.biosUuid === c.canonicalBiosUuid) return true;
       if (newRecord.cloudResourceId && c.canonicalCloudResourceId && newRecord.cloudResourceId === c.canonicalCloudResourceId) return true;
@@ -173,7 +176,6 @@ export function App() {
     const isMatchingArchived = targetGroupId ? Boolean(archives[targetGroupId]?.isArchived) : false;
 
     if (targetGroupId && isMatchingArchived) {
-      // 3. Trigger Automatic Reactivation!
       const hostname = matchingCluster.canonicalHostname;
       setArchives(prev => ({
         ...prev,
@@ -279,6 +281,19 @@ export function App() {
 
   const reviewCount = clusters.filter(c => c.correlationStatus === 'REVIEW_REQUIRED').length;
   const demoAsset = clusters.find(c => c.canonicalHostname === 'WEB-SRV-01') || clusters[0];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-[#070B10] text-[#E8EEF5] flex flex-col justify-center items-center p-6 space-y-4 select-none">
+        <Loader2 className="w-8 h-8 animate-spin text-[#00B8FF]" />
+        <p className="text-sm font-mono text-[#8A99AF]">Loading secure workspace...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
 
   return (
     <div className="min-h-screen bg-[#071019] text-[#F4F7FB] font-sans flex flex-col md:flex-row antialiased selection:bg-[#00B8FF]/30 selection:text-white relative">
@@ -415,6 +430,12 @@ export function App() {
               auditLogs={auditLogs}
             />
           )}
+
+          {activeTab === 'admin' && (
+            <AdminManagementTab
+              auditLogs={auditLogs}
+            />
+          )}
         </main>
 
         {/* Footer */}
@@ -452,4 +473,15 @@ export function App() {
     </div>
   );
 }
+
+export function App() {
+  return (
+    <AuthProvider>
+      <RBACProvider>
+        <MainWorkspace />
+      </RBACProvider>
+    </AuthProvider>
+  );
+}
+
 export default App;

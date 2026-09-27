@@ -16,8 +16,12 @@ import {
   Menu,
   ChevronDown,
   Check,
+  Layers,
+  ChevronRight,
+  LogOut,
 } from 'lucide-react';
 import { NavTabId } from './Sidebar';
+import { useAuth } from '../context/AuthContext';
 
 interface TopHeaderProps {
   activeTab: NavTabId;
@@ -42,18 +46,27 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   setSearchQuery,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { currentUser, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+    } catch (err) {
+      console.error('Sign out error:', err);
+    }
+  };
 
   const navItems = [
     {
       id: 'overview' as const,
       label: 'Overview',
-      subtitle: 'Overview & Telemetry Matrix',
+      subtitle: 'Executive Telemetry & KPIs',
       icon: ExecutiveIntelligenceIcon,
     },
     {
       id: 'inventory' as const,
       label: 'Asset Inventory',
-      subtitle: 'Normalized Asset View Across Security Sources',
+      subtitle: 'Multi-Source Asset Inventory',
       icon: AssetIntelligenceIcon,
     },
     {
@@ -78,7 +91,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     {
       id: 'tests' as const,
       label: 'Test Suite',
-      subtitle: 'Automated Integrity & Security Verifications',
+      subtitle: 'Automated Integrity & Verification',
       icon: TestCommandCenterIcon,
       badge: `${totalTests}`,
     },
@@ -100,7 +113,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   };
 
   return (
-    <header className="bg-[#071019]/95 backdrop-blur-md border-b border-[#1B3045] sticky top-0 z-20 select-none">
+    <header className="bg-[#071019]/95 backdrop-blur-md border-b border-[#1B3045] sticky top-0 z-40 select-none">
       
       {/* 1. DESKTOP & TABLET TOP HEADER BAR (md:flex) */}
       <div className="hidden md:flex h-[64px] px-6 items-center justify-between gap-4">
@@ -165,83 +178,115 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             </button>
           )}
 
-          {/* Analyst Profile Pill */}
-          <div className="hidden xl:flex items-center gap-2 bg-[#0B1420] border border-[#1B3045] px-2.5 py-1.5 rounded-xl text-xs text-[#A8B7C9] font-medium">
-            <div className="w-5 h-5 rounded-full bg-[#101B29] border border-[#1B3045] text-[#A8B7C9] flex items-center justify-center text-xs">
-              <User className="w-3 h-3 text-[#00B8FF]" />
+          {/* Analyst Profile & Workspace Pill with Sign Out */}
+          <div className="hidden xl:flex items-center gap-2.5 bg-[#0B1420] border border-[#1B3045] px-3 py-1.5 rounded-xl text-xs text-[#A8B7C9]">
+            <div className="w-6 h-6 rounded-lg bg-[#121E2D] border border-[#1B3045] text-[#00B8FF] flex items-center justify-center shrink-0">
+              <User className="w-3.5 h-3.5" />
             </div>
-            <span className="font-mono text-[11px] text-[#A8B7C9]">
-              analyst@vulnfusion
-            </span>
+            <div className="flex flex-col min-w-0">
+              <span className="font-mono text-[11px] text-white font-medium truncate max-w-[140px]" title={currentUser?.email || 'analyst@vulnfusion.internal'}>
+                {currentUser?.email || 'analyst@vulnfusion.internal'}
+              </span>
+              <span className="text-[9px] text-[#00B8FF] font-mono tracking-wide uppercase">
+                VulnFusion Demo
+              </span>
+            </div>
+            <div className="h-4 w-px bg-[#1B3045] mx-0.5" />
+            <button
+              type="button"
+              onClick={handleSignOut}
+              className="p-1.5 text-[#8B95A5] hover:text-rose-400 hover:bg-rose-500/10 rounded-lg transition-colors"
+              title="Sign Out"
+              aria-label="Sign Out"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
           </div>
 
         </div>
       </div>
 
-      {/* 2. MOBILE TOP HEADER (md:hidden) */}
+      {/* 2. DEDICATED MOBILE HEADER (md:hidden) — 56px Sleek Bar */}
       <div className="md:hidden">
         
-        {/* Mobile Header Row: [VulnFusion] on left, [☰] on right */}
-        <div className="h-[60px] px-4 flex items-center justify-between gap-3">
+        {/* Top Mobile Bar: Brand Logo + VulnFusion | AI Analyst Button | Menu Trigger */}
+        <div className="h-[56px] px-3.5 flex items-center justify-between gap-2 border-b border-[#162231]">
           
+          {/* Brand Anchor */}
           <button
             type="button"
             onClick={() => handleSelectTab('overview')}
-            className="flex items-center gap-2.5 group focus:outline-none min-h-[44px]"
+            className="flex items-center gap-2 group focus:outline-none min-h-[44px] text-left"
             title="VulnFusion Asset Intelligence"
+            aria-label="VulnFusion Asset Intelligence Overview"
           >
-            <div className="w-9 h-9 rounded-xl bg-[#0B1522] border border-[#2563A6]/40 flex items-center justify-center shadow-sm transition-all">
-              <VulnFusionBrandIcon size={24} />
+            <div className="w-8 h-8 rounded-lg bg-[#0B1522] border border-[#2563A6]/50 flex items-center justify-center shadow-xs shrink-0">
+              <VulnFusionBrandIcon size={22} />
             </div>
-            <div className="text-left">
-              <span className="font-extrabold text-sm tracking-tight text-[#F1F5F9] block leading-tight">
+            <div className="min-w-0">
+              <span className="font-extrabold text-sm tracking-tight text-[#F1F5F9] block leading-none">
                 Vuln<span className="text-[#9CC3E6]">Fusion</span>
               </span>
-              <span className="text-[10px] text-[#94A3B8] font-semibold tracking-wider uppercase font-mono">
+              <span className="text-[9px] text-[#718197] font-semibold tracking-wider uppercase font-mono block mt-0.5">
                 Asset Intelligence
               </span>
             </div>
           </button>
 
-          {/* Mobile Hamburger Toggle [☰] / [✕] */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="w-10 h-10 rounded-xl bg-[#0B1420] border border-[#1B3045] text-[#00B8FF] flex items-center justify-center hover:bg-[#101B29] transition-colors min-h-[44px] min-w-[44px]"
-            aria-label="Toggle navigation menu"
-          >
-            {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </button>
+          {/* Direct Mobile Quick Actions */}
+          <div className="flex items-center gap-1.5">
+            {onOpenAIAnalyst && (
+              <button
+                type="button"
+                onClick={onOpenAIAnalyst}
+                className="h-[38px] px-2.5 bg-purple-950/40 hover:bg-purple-900/60 active:bg-purple-900 text-purple-200 border border-purple-500/40 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors"
+                aria-label="Open AI Analyst"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                <span className="text-[11px]">AI</span>
+              </button>
+            )}
+
+            {/* Mobile Workspace Selector / Hamburger */}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="h-[38px] w-[38px] rounded-xl bg-[#0B1420] border border-[#1B3045] text-[#00B8FF] flex items-center justify-center active:bg-[#152232] transition-colors"
+              aria-label="Toggle navigation menu"
+            >
+              {mobileMenuOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
 
-        {/* Mobile Current Section Selector Sub-Header: [ Current Section ▼ ] */}
-        <div className="bg-[#0B1420] border-t border-[#1B3045] px-4 py-2 flex items-center justify-between gap-2">
-          <span className="text-[10px] text-[#718197] font-mono uppercase tracking-wider shrink-0">
-            Section:
-          </span>
+        {/* Interactive Mobile Workspace Selector Pill */}
+        <div className="px-3.5 py-1.5 bg-[#090F17] flex items-center justify-between gap-2 border-b border-[#141F2D]">
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex-1 bg-[#101B29] border border-[#00B8FF]/30 rounded-lg px-3 py-1.5 flex items-center justify-between text-xs font-semibold text-[#00B8FF] shadow-[0_0_10px_rgba(0,184,255,0.1)] active:bg-[#152232] transition min-h-[40px]"
+            className="w-full flex items-center justify-between text-xs font-semibold text-slate-200 bg-[#0E1724] border border-[#1B2C3F] px-3 py-1.5 rounded-lg active:bg-[#142234] transition-colors min-h-[38px]"
           >
             <div className="flex items-center gap-2 truncate">
-              <CurrentIcon size={18} className="shrink-0" />
-              <span className="truncate">{currentItem.label}</span>
+              <CurrentIcon size={16} className="text-[#00B8FF] shrink-0" />
+              <span className="truncate text-slate-100 font-bold">{currentItem.label}</span>
               {currentItem.badge && (
-                <span className="px-1.5 py-0.2 text-[10px] font-bold rounded-full font-mono bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                <span className="px-1.5 py-0.2 text-[9px] font-bold font-mono rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
                   {currentItem.badge}
                 </span>
               )}
             </div>
-            <ChevronDown className={`w-4 h-4 text-[#00B8FF] shrink-0 transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`} />
+            <div className="flex items-center gap-1 text-[11px] text-[#718197] font-mono shrink-0">
+              <span>Switch</span>
+              <ChevronDown className={`w-3.5 h-3.5 text-[#00B8FF] transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`} />
+            </div>
           </button>
         </div>
 
-        {/* Mobile Navigation Drawer / Dropdown Menu */}
+        {/* Mobile Navigation Drawer / Slide-Down Menu */}
         {mobileMenuOpen && (
-          <div className="bg-[#071019] border-b border-[#1B3045] px-4 py-3 space-y-3 shadow-2xl animate-fadeIn">
+          <div className="bg-[#071019] border-b border-[#1B3045] px-4 py-3.5 space-y-3.5 shadow-2xl animate-fadeIn z-50">
             
-            {/* Mobile Search Input */}
+            {/* Quick Live Search Input */}
             <div className="relative">
               <Search className="absolute left-3 top-2.5 w-4 h-4 text-[#718197]" />
               <input
@@ -262,10 +307,10 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               )}
             </div>
 
-            {/* WORKSPACE Section */}
+            {/* WORKSPACES List */}
             <div>
-              <div className="text-[10px] text-[#718197] font-mono uppercase tracking-wider px-1 mb-1.5">
-                WORKSPACE
+              <div className="text-[10px] text-[#718197] font-mono uppercase tracking-wider px-1 mb-1.5 font-bold">
+                SELECT WORKSPACE
               </div>
               <div className="space-y-1">
                 {navItems.map((item) => {
@@ -277,15 +322,18 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                       key={item.id}
                       type="button"
                       onClick={() => handleSelectTab(item.id)}
-                      className={`w-full px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between min-h-[44px] ${
+                      className={`w-full px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between min-h-[44px] ${
                         isActive
-                          ? 'bg-[#101B29] text-[#00B8FF] border border-[#00B8FF]/40 shadow-[0_0_12px_rgba(0,184,255,0.15)]'
-                          : 'text-[#A8B7C9] bg-[#0B1420] hover:text-[#F4F7FB] hover:bg-[#101B29]/60 border border-[#1B3045]/60'
+                          ? 'bg-[#101F30] text-[#00B8FF] border border-[#00B8FF]/40 shadow-sm'
+                          : 'text-[#A8B7C9] bg-[#0B1420] active:bg-[#121E2D] border border-[#162436]'
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Icon size={18} />
-                        <span className="text-sm">{item.label}</span>
+                        <Icon size={18} className={isActive ? 'text-[#00B8FF]' : 'text-[#8B95A5]'} />
+                        <div className="text-left">
+                          <span className="text-sm font-bold block leading-tight">{item.label}</span>
+                          <span className="text-[10px] text-[#64748B] font-mono block">{item.subtitle}</span>
+                        </div>
                       </div>
 
                       <div className="flex items-center gap-2">
@@ -306,23 +354,46 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               </div>
             </div>
 
-            {/* INTELLIGENCE Section */}
-            <div>
-              <div className="text-[10px] text-[#718197] font-mono uppercase tracking-wider px-1 mb-1.5">
-                INTELLIGENCE
+            {/* AI Sidecar Direct Trigger */}
+            {onOpenAIAnalyst && (
+              <div className="pt-1">
+                <button
+                  type="button"
+                  onClick={handleMobileAIAnalyst}
+                  className="w-full px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between min-h-[44px] bg-purple-950/30 active:bg-purple-900/50 text-purple-200 border border-purple-500/40"
+                >
+                  <div className="flex items-center gap-3">
+                    <Sparkles className="w-4 h-4 text-purple-400" />
+                    <div className="text-left">
+                      <span className="text-sm font-bold block leading-tight">AI Analyst Sidecar</span>
+                      <span className="text-[10px] text-purple-300/80 font-mono block">Deterministic Explanations</span>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-purple-400" />
+                </button>
+              </div>
+            )}
+
+            {/* Mobile User Account & Sign Out */}
+            <div className="pt-3 border-t border-[#162436] flex items-center justify-between">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-7 h-7 rounded-lg bg-[#0E1724] border border-[#1B3045] text-[#00B8FF] flex items-center justify-center shrink-0">
+                  <User className="w-3.5 h-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <span className="text-xs text-white font-mono truncate block" title={currentUser?.email || 'analyst@vulnfusion.internal'}>
+                    {currentUser?.email || 'analyst@vulnfusion.internal'}
+                  </span>
+                  <span className="text-[9px] text-[#00B8FF] font-mono block">VulnFusion Demo</span>
+                </div>
               </div>
               <button
                 type="button"
-                onClick={handleMobileAIAnalyst}
-                className="w-full px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center justify-between min-h-[44px] bg-purple-950/30 hover:bg-purple-900/50 text-purple-200 border border-purple-500/40"
+                onClick={handleSignOut}
+                className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors min-h-[40px]"
               >
-                <div className="flex items-center gap-3">
-                  <Sparkles className="w-4 h-4 text-purple-400" />
-                  <span className="text-sm font-semibold">AI Analyst</span>
-                </div>
-                <span className="px-1.5 py-0.5 text-[9px] font-mono rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                  Sidecar
-                </span>
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sign Out</span>
               </button>
             </div>
 
@@ -334,4 +405,5 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
     </header>
   );
 };
+
 

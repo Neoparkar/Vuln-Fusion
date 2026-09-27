@@ -131,7 +131,7 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
         </div>
       </div>
 
-      {/* Column Headers */}
+      {/* Column Headers (Desktop Only) */}
       <div className="hidden md:grid grid-cols-12 gap-4 text-[11px] font-mono uppercase tracking-wider text-[#64748B] px-2">
         <div className="col-span-4 flex items-center gap-1.5">
           <span className="w-2 h-2 rounded-full bg-cyan-400/80" />
@@ -147,9 +147,11 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
         </div>
       </div>
 
-      {/* Main Relationship Canvas Container */}
+      {/* ========================================================================= */}
+      {/* 1. DESKTOP RELATIONSHIP GRAPH (SVG Bezier Curves: hidden md:block)         */}
+      {/* ========================================================================= */}
       <div
-        className="relative w-full overflow-x-auto min-w-[700px] md:min-w-0"
+        className="hidden md:block relative w-full"
         style={{ minHeight: `${containerHeight}px` }}
       >
         {/* SVG Bezier Curves Overlay Layer */}
@@ -174,9 +176,9 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
           {/* 1. Curves: Source Findings (Left: X=320) -> Asset Node (Center: X=450) */}
           {findings.map((f, idx) => {
             const sourceCenterY = 20 + idx * (nodeHeight + nodeGap) + nodeHeight / 2;
-            const x1 = 320; // right of source card (relative % in 1000 coordinate space)
+            const x1 = 320;
             const y1 = sourceCenterY;
-            const x2 = 450; // left of asset card
+            const x2 = 450;
             const y2 = assetCenterY;
             const dx = x2 - x1;
 
@@ -188,7 +190,6 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
 
             return (
               <g key={`curve-source-${f.findingId}`}>
-                {/* Background Shadow / Glow Path when active */}
                 {isHighlighted && (
                   <path
                     d={pathD}
@@ -200,7 +201,6 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
                   />
                 )}
 
-                {/* Primary Connection Path */}
                 <path
                   d={pathD}
                   fill="none"
@@ -212,7 +212,6 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
                   className="transition-all duration-200"
                 />
 
-                {/* Endpoint Anchor Dot on Source Node */}
                 <circle
                   cx={x1}
                   cy={y1}
@@ -224,7 +223,7 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
             );
           })}
 
-          {/* 2. Curve: Asset Node (Center: X=580) -> Remediation Issue Node (Right: X=700) */}
+          {/* 2. Curve: Asset Node (Center: X=570) -> Remediation Issue Node (Right: X=690) */}
           {(() => {
             const x1 = 570;
             const y1 = assetCenterY;
@@ -249,7 +248,6 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
                   className="transition-all duration-200"
                 />
 
-                {/* Anchor Dots */}
                 <circle
                   cx={x1}
                   cy={y1}
@@ -270,15 +268,12 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
         {/* 3-Column HTML/React Interactive Nodes Grid */}
         <div className="grid grid-cols-12 gap-6 relative z-20 h-full items-center">
           
-          {/* ========================================================================= */}
-          {/* LEVEL 1: SOURCE FINDINGS COLUMN (Left 4 cols)                             */}
-          {/* ========================================================================= */}
+          {/* LEVEL 1: SOURCE FINDINGS COLUMN */}
           <div className="col-span-4 space-y-4">
             {findings.map((finding) => {
               const isSelected = selectedFindingId === finding.findingId;
               const isHovered = activeHover === finding.findingId;
               const isMuted = activeHover !== null && !isHovered;
-              const toolColor = getToolColor(finding.sourceTool);
 
               return (
                 <div
@@ -327,7 +322,6 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
                     </div>
                   </div>
 
-                  {/* Method & Software row */}
                   <div className="mt-2 flex items-center justify-between text-[10px] font-mono text-[#8B95A5] pt-1.5 border-t border-[#162231]">
                     <span className="truncate">
                       {finding.affectedSoftware} {finding.affectedVersion || ''}
@@ -341,9 +335,7 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
             })}
           </div>
 
-          {/* ========================================================================= */}
-          {/* LEVEL 2: UNDERLYING ASSET COLUMN (Center 4 cols)                          */}
-          {/* ========================================================================= */}
+          {/* LEVEL 2: UNDERLYING ASSET COLUMN */}
           <div className="col-span-4 flex justify-center">
             <div
               className={`w-full max-w-[240px] p-4 rounded-2xl border text-center transition-all duration-200 relative ${
@@ -352,7 +344,6 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
                   : 'bg-[#0B1522] border-[#1E334D] shadow-md'
               }`}
             >
-              {/* Asset Badge Icon */}
               <div className="w-10 h-10 rounded-xl bg-[#08111C] border border-[#2563A6]/40 flex items-center justify-center mx-auto text-[#00B8FF] shadow-sm mb-2.5">
                 <AssetIntelligenceIcon size={22} glow={Boolean(activeHover)} />
               </div>
@@ -371,14 +362,12 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
 
               <div className="mt-3 pt-2.5 border-t border-[#1B2F45] flex items-center justify-between text-[11px] font-mono text-[#8B95A5]">
                 <span>Sources Ingested:</span>
-                <strong className="text-slate-200 font-bold">{findings.length} Source Feeds</strong>
+                <strong className="text-slate-200 font-bold">{findings.length} Feeds</strong>
               </div>
             </div>
           </div>
 
-          {/* ========================================================================= */}
-          {/* LEVEL 3: POTENTIAL REMEDIATION ISSUE (Right 4 cols)                       */}
-          {/* ========================================================================= */}
+          {/* LEVEL 3: POTENTIAL REMEDIATION ISSUE */}
           <div className="col-span-4 flex justify-end">
             <div
               className={`w-full max-w-[260px] p-4 rounded-2xl border transition-all duration-200 relative text-left ${
@@ -387,7 +376,6 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
                   : 'bg-[#101426] border-violet-500/40 shadow-[0_0_24px_rgba(139,92,246,0.2)]'
               }`}
             >
-              {/* Header with Remedy ID & Status */}
               <div className="flex items-center justify-between gap-2 mb-2">
                 <span className="px-2.5 py-1 text-xs font-bold font-mono rounded-lg bg-violet-500/20 text-violet-300 border border-violet-500/30">
                   {group.remediationIssueId}
@@ -405,7 +393,6 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
                 </span>
               </div>
 
-              {/* Title & Vulnerability ID */}
               <div className="space-y-1">
                 <div className="flex items-center gap-1.5">
                   <span className="text-xs font-extrabold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded border border-rose-500/20 font-mono">
@@ -417,7 +404,6 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
                 </h4>
               </div>
 
-              {/* Resolution Metrics */}
               <div className="mt-3 pt-2.5 border-t border-[#23263E] space-y-1 text-[11px] font-mono text-[#A8B7C9]">
                 <div className="flex items-center justify-between">
                   <span className="text-[#718197]">Confidence:</span>
@@ -435,6 +421,132 @@ export const FindingRelationshipGraph: React.FC<FindingRelationshipGraphProps> =
 
         </div>
       </div>
+
+      {/* ========================================================================= */}
+      {/* 2. DEDICATED MOBILE VERTICAL INTELLIGENCE FLOW (md:hidden)                */}
+      {/* ========================================================================= */}
+      <div className="md:hidden space-y-4">
+        
+        {/* Step 1: Remediation Issue Node */}
+        <div className={`p-4 rounded-xl border text-left ${
+          isReviewRequired
+            ? 'bg-[#18140B] border-amber-500/50 shadow-sm'
+            : 'bg-[#101426] border-violet-500/40 shadow-sm'
+        }`}>
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <span className="px-2.5 py-1 text-xs font-bold font-mono rounded bg-violet-500/20 text-violet-300 border border-violet-500/30">
+              {group.remediationIssueId}
+            </span>
+            <span className={`px-2 py-0.5 text-[10px] font-bold font-mono rounded border ${
+              isReviewRequired ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+            }`}>
+              {isReviewRequired ? 'REVIEW REQUIRED' : 'EVIDENCE CORRELATED'}
+            </span>
+          </div>
+
+          <div className="text-xs font-extrabold text-rose-400 font-mono mb-1">
+            {group.vulnerabilityId}
+          </div>
+          <h4 className="text-sm font-bold text-slate-100 leading-snug">
+            {group.title}
+          </h4>
+
+          <div className="mt-3 pt-2 border-t border-[#23263E] flex items-center justify-between text-xs font-mono text-[#8B95A5]">
+            <span>Deterministic Score:</span>
+            <strong className={isReviewRequired ? 'text-amber-300' : 'text-emerald-400'}>
+              {group.confidence}% Match
+            </strong>
+          </div>
+        </div>
+
+        {/* Vertical Rail / Down Arrow Connector */}
+        <div className="flex flex-col items-center justify-center my-1 text-[#5FA8D3]">
+          <div className={`w-0.5 h-4 ${isReviewRequired ? 'border-l-2 border-dashed border-amber-400' : 'bg-[#2563A6]'}`} />
+          <div className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[#0B1522] px-2 py-0.5 rounded-full border border-[#1E334D] text-[#5FA8D3] my-1">
+            {isReviewRequired ? 'CONFIRM TARGET' : 'TARGET ASSET'}
+          </div>
+          <div className={`w-0.5 h-4 ${isReviewRequired ? 'border-l-2 border-dashed border-amber-400' : 'bg-[#2563A6]'}`} />
+        </div>
+
+        {/* Step 2: Underlying Asset Target Card */}
+        <div className="p-3.5 rounded-xl bg-[#0B1522] border border-[#1E334D] flex items-center justify-between gap-3 text-left shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-lg bg-[#08111C] border border-[#2563A6]/40 flex items-center justify-center text-[#00B8FF] shrink-0">
+              <AssetIntelligenceIcon size={20} />
+            </div>
+            <div className="min-w-0">
+              <span className="text-[10px] font-mono uppercase text-[#718197] font-bold block">
+                Target Canonical Asset
+              </span>
+              <h4 className="text-sm font-extrabold text-slate-100 truncate">
+                {assetHostname}
+              </h4>
+              <span className="text-[10px] font-mono text-sky-400">
+                {group.underlyingAssetGroupId}
+              </span>
+            </div>
+          </div>
+
+          <span className="text-xs font-mono font-bold text-violet-300 bg-violet-500/10 px-2 py-1 rounded border border-violet-500/20 shrink-0">
+            {findings.length} Feeds
+          </span>
+        </div>
+
+        {/* Vertical Rail / Down Arrow Connector */}
+        <div className="flex flex-col items-center justify-center my-1 text-[#5FA8D3]">
+          <div className={`w-0.5 h-4 ${isReviewRequired ? 'border-l-2 border-dashed border-amber-400' : 'bg-[#2563A6]'}`} />
+          <div className="text-[10px] font-mono font-bold uppercase tracking-wider bg-[#0B1522] px-2 py-0.5 rounded-full border border-[#1E334D] text-[#5FA8D3] my-1">
+            SOURCE FINDINGS
+          </div>
+          <div className={`w-0.5 h-4 ${isReviewRequired ? 'border-l-2 border-dashed border-amber-400' : 'bg-[#2563A6]'}`} />
+        </div>
+
+        {/* Step 3: Source Findings List */}
+        <div className="space-y-2.5">
+          {findings.map((finding) => {
+            const isSelected = selectedFindingId === finding.findingId;
+
+            return (
+              <div
+                key={finding.findingId}
+                onClick={() => onSelectFinding(finding.findingId)}
+                className={`p-3 rounded-xl border transition-all text-left cursor-pointer ${
+                  isSelected
+                    ? 'bg-[#101F30] border-[#00B8FF] shadow-sm'
+                    : 'bg-[#0C1522] border-[#1B2D42] active:bg-[#121E2E]'
+                }`}
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-[#070F18] border border-[#233549] flex items-center justify-center shrink-0">
+                      <SourceLogo sourceTool={finding.sourceTool} size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-xs text-slate-100 font-mono block truncate">
+                        {finding.sourceFindingId}
+                      </span>
+                      <span className="text-[10px] text-[#718197] font-mono block truncate">
+                        {finding.sourceTool} • {finding.findingId}
+                      </span>
+                    </div>
+                  </div>
+
+                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono border shrink-0 ${getSeverityBadge(finding.severity)}`}>
+                    {finding.severity}
+                  </span>
+                </div>
+
+                <div className="mt-2 pt-2 border-t border-[#162231] flex items-center justify-between text-[11px] font-mono text-[#8B95A5]">
+                  <span className="truncate">{finding.affectedSoftware} {finding.affectedVersion || ''}</span>
+                  <span className="text-sky-400 text-[10px] font-bold">Tap to Inspect ›</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+      </div>
+
 
     </div>
   );
