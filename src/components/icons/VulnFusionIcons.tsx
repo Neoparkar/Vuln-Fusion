@@ -1093,3 +1093,388 @@ export const ExportMarkdownIcon: React.FC<IconBaseProps> = ({
     <line x1="14" y1="28" x2="26" y2="28" stroke="#FDE68A" strokeWidth="1" strokeLinecap="round" />
   </svg>
 );
+
+/* ========================================================================= */
+/* 15. REPORT INTELLIGENCE ICON: Executive Security Brief & Data Analytics   */
+/* ========================================================================= */
+export const ReportIntelligenceIcon: React.FC<IconBaseProps> = ({
+  size = 32,
+  className = '',
+  glow = true,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`transition-transform duration-200 ${className}`}
+    aria-label="Reports: Executive Security Intelligence & Analytics"
+    {...props}
+  >
+    <defs>
+      <linearGradient id="rep-doc-plate" x1="11" y1="5" x2="39" y2="43" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#1E293B" />
+        <stop offset="60%" stopColor="#0F172A" />
+        <stop offset="100%" stopColor="#071321" />
+      </linearGradient>
+      <linearGradient id="rep-corner-fold" x1="30" y1="5" x2="39" y2="14" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#38BDF8" />
+        <stop offset="100%" stopColor="#0284C7" />
+      </linearGradient>
+      <linearGradient id="rep-bar-cyan" x1="16" y1="27" x2="20" y2="37" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#00F0FF" />
+        <stop offset="100%" stopColor="#0284C7" />
+      </linearGradient>
+      <linearGradient id="rep-bar-purple" x1="22" y1="20" x2="26" y2="37" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#C084FC" />
+        <stop offset="100%" stopColor="#6366F1" />
+      </linearGradient>
+      <linearGradient id="rep-bar-emerald" x1="28" y1="25" x2="32" y2="37" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#34D399" />
+        <stop offset="100%" stopColor="#059669" />
+      </linearGradient>
+    </defs>
+
+    {/* Dimensional Security Report Dossier Chassis */}
+    <path
+      d="M12 6C12 4.89543 12.8954 4 14 4H30L38 12V42C38 43.1046 37.1046 44 36 44H14C12.8954 44 12 43.1046 12 42V6Z"
+      fill="url(#rep-doc-plate)"
+      stroke="#38BDF8"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+
+    {/* Folded Top-Right Dossier Corner */}
+    <path
+      d="M30 4V12H38"
+      fill="url(#rep-corner-fold)"
+      stroke="#38BDF8"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+
+    {/* Dossier Header Title Line */}
+    <line x1="17" y1="10.5" x2="26" y2="10.5" stroke="#BAE6FD" strokeWidth="1.5" strokeLinecap="round" />
+
+    {/* Secondary Metadata Telemetry Rows */}
+    <line x1="17" y1="15" x2="33" y2="15" stroke="#475569" strokeWidth="1" strokeLinecap="round" />
+    <line x1="17" y1="18.5" x2="27" y2="18.5" stroke="#334155" strokeWidth="0.8" strokeLinecap="round" />
+
+    {/* Analytical Telemetry Data Bars */}
+    <rect x="17" y="28" width="4" height="9" rx="1" fill="url(#rep-bar-cyan)" />
+    <rect x="23" y="21" width="4" height="16" rx="1" fill="url(#rep-bar-purple)" />
+    <rect x="29" y="25" width="4" height="12" rx="1" fill="url(#rep-bar-emerald)" />
+
+    {/* Analytical Baseline Vector */}
+    <line x1="15" y1="38" x2="35" y2="38" stroke="#334155" strokeWidth="1" strokeLinecap="round" />
+
+    {/* Superimposed Security Trend Vector */}
+    <path
+      d="M19 25L25 18L31 22L36 16"
+      stroke="#00F0FF"
+      strokeWidth="1.3"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <circle cx="19" cy="25" r="1.3" fill="#FFFFFF" />
+    <circle cx="25" cy="18" r="1.3" fill="#FFFFFF" />
+    <circle cx="31" cy="22" r="1.3" fill="#FFFFFF" />
+    <circle cx="36" cy="16" r="1.6" fill="#38BDF8" />
+  </svg>
+);
+
+export const ReportsIcon = ReportIntelligenceIcon;
+
+/* ========================================================================= */
+/* 16. AI ANALYST SECURITY ICON: Neural Intelligence Node & Correlation Signal*/
+/* ========================================================================= */
+export const AIAnalystSecurityIcon: React.FC<IconBaseProps> = ({
+  size = 32,
+  className = '',
+  glow = true,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`transition-transform duration-200 ${className}`}
+    aria-label="AI Analyst: Neural Security Investigation & Correlation"
+    {...props}
+  >
+    <defs>
+      <radialGradient id="aianalyst-core" cx="24" cy="24" r="8" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#E9D5FF" />
+        <stop offset="40%" stopColor="#A855F7" />
+        <stop offset="85%" stopColor="#4C1D95" />
+        <stop offset="100%" stopColor="#1E1035" />
+      </radialGradient>
+      <linearGradient id="aianalyst-shield-stroke" x1="10" y1="6" x2="38" y2="42" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#A855F7" />
+        <stop offset="50%" stopColor="#6366F1" />
+        <stop offset="100%" stopColor="#00F0FF" />
+      </linearGradient>
+    </defs>
+
+    {/* Subtle Security Perimeter Shield Geometry */}
+    <path
+      d="M24 6L11 12.5V23.5C11 31.8 16.5 39 24 42C31.5 39 37 31.8 37 23.5V12.5L24 6Z"
+      fill="#0E0A1E"
+      stroke="url(#aianalyst-shield-stroke)"
+      strokeWidth="1.2"
+      strokeDasharray="3 2"
+      opacity="0.8"
+    />
+
+    {/* Neural Correlation Rays */}
+    <line x1="24" y1="12" x2="24" y2="24" stroke="#C084FC" strokeWidth="1.3" />
+    <line x1="14" y1="24" x2="24" y2="24" stroke="#38BDF8" strokeWidth="1.3" />
+    <line x1="34" y1="24" x2="24" y2="24" stroke="#38BDF8" strokeWidth="1.3" />
+    <line x1="24" y1="36" x2="24" y2="24" stroke="#A855F7" strokeWidth="1.3" />
+    
+    {/* Diagonal Interconnect Synapses */}
+    <line x1="17" y1="17" x2="31" y2="31" stroke="#818CF8" strokeWidth="0.8" strokeDasharray="1.5 1.5" opacity="0.7" />
+    <line x1="31" y1="17" x2="17" y2="31" stroke="#818CF8" strokeWidth="0.8" strokeDasharray="1.5 1.5" opacity="0.7" />
+
+    {/* 4 Cardinal Security Telemetry Nodes */}
+    {/* Top: AI Directive Node (Violet) */}
+    <circle cx="24" cy="12" r="2.8" fill="#1E1035" stroke="#C084FC" strokeWidth="1" />
+    <circle cx="24" cy="12" r="1.2" fill="#FFFFFF" />
+
+    {/* Left: Input Telemetry Node (Cyan) */}
+    <circle cx="14" cy="24" r="2.8" fill="#0C2340" stroke="#00F0FF" strokeWidth="1" />
+    <circle cx="14" cy="24" r="1.2" fill="#BAE6FD" />
+
+    {/* Right: Asset Inference Node (Cyan) */}
+    <circle cx="34" cy="24" r="2.8" fill="#0C2340" stroke="#00F0FF" strokeWidth="1" />
+    <circle cx="34" cy="24" r="1.2" fill="#BAE6FD" />
+
+    {/* Bottom: Advisory Node (Violet) */}
+    <circle cx="24" cy="36" r="2.8" fill="#1E1035" stroke="#A855F7" strokeWidth="1" />
+    <circle cx="24" cy="36" r="1.2" fill="#E9D5FF" />
+
+    {/* Central Pulsing AI Intelligence Core */}
+    <circle cx="24" cy="24" r="7.5" fill="url(#aianalyst-core)" stroke="#C084FC" strokeWidth="1.2" />
+    
+    {/* Precision Diamond Nexus Spark */}
+    <path d="M24 18.5L28.5 24L24 29.5L19.5 24L24 18.5Z" fill="#FAF5FF" stroke="#A855F7" strokeWidth="0.6" />
+    <circle cx="24" cy="24" r="1.8" fill="#FFFFFF" />
+  </svg>
+);
+
+export const AIAnalystIcon = AIAnalystSecurityIcon;
+
+/* ========================================================================= */
+/* 17. SECURITY GOVERNANCE ICON: Security Control, RBAC & Platform Governance */
+/* ========================================================================= */
+export const SecurityGovernanceIcon: React.FC<IconBaseProps> = ({
+  size = 32,
+  className = '',
+  glow = true,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`transition-transform duration-200 ${className}`}
+    aria-label="Administration: Security Governance & Policy Control"
+    {...props}
+  >
+    <defs>
+      <linearGradient id="gov-shield-hull" x1="10" y1="5" x2="38" y2="43" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#1E293B" />
+        <stop offset="50%" stopColor="#0B1B2B" />
+        <stop offset="100%" stopColor="#040D18" />
+      </linearGradient>
+      <linearGradient id="gov-core-plate" x1="18" y1="16" x2="30" y2="28" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#0284C7" />
+        <stop offset="100%" stopColor="#031E38" />
+      </linearGradient>
+    </defs>
+
+    {/* Fortress Governance Outer Armor Shield */}
+    <path
+      d="M24 5L10 11.5V23.5C10 32.5 15.8 40.5 24 43.5C32.2 40.5 38 32.5 38 23.5V11.5L24 5Z"
+      fill="url(#gov-shield-hull)"
+      stroke="#38BDF8"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+
+    {/* Inner Shield Bevel Trim */}
+    <path
+      d="M24 8.5L12.5 13.8V23.5C12.5 30.8 17.2 37.4 24 40.2C30.8 37.4 35.5 30.8 35.5 23.5V13.8L24 8.5Z"
+      stroke="#0284C7"
+      strokeWidth="0.8"
+      opacity="0.6"
+    />
+
+    {/* Access Control & Governance Interlock Bus */}
+    <line x1="15" y1="22" x2="33" y2="22" stroke="#38BDF8" strokeWidth="1" strokeDasharray="2 1.5" />
+
+    {/* Left & Right Governance Authority Nodes */}
+    <circle cx="15" cy="22" r="2.2" fill="#0C2340" stroke="#00F0FF" strokeWidth="0.9" />
+    <circle cx="15" cy="22" r="0.9" fill="#FFFFFF" />
+    <circle cx="33" cy="22" r="2.2" fill="#0C2340" stroke="#00F0FF" strokeWidth="0.9" />
+    <circle cx="33" cy="22" r="0.9" fill="#FFFFFF" />
+
+    {/* Central High-Assurance Governance Keylock Core */}
+    <circle cx="24" cy="21" r="5.5" fill="url(#gov-core-plate)" stroke="#38BDF8" strokeWidth="1.2" />
+    <circle cx="24" cy="19.5" r="1.8" fill="#FFFFFF" />
+    <path d="M22.5 21.5H25.5L25 25H23L22.5 21.5Z" fill="#FFFFFF" />
+
+    {/* Policy & Rule Verification Check Rails (Bottom) */}
+    <line x1="18" y1="32" x2="30" y2="32" stroke="#34D399" strokeWidth="1.2" strokeLinecap="round" />
+    <circle cx="24" cy="32" r="1.6" fill="#34D399" />
+  </svg>
+);
+
+export const AdministrationIcon = SecurityGovernanceIcon;
+export const AdminIcon = SecurityGovernanceIcon;
+
+/* ========================================================================= */
+/* 18. KNOWLEDGE CENTER ICON: Technical Security Guidance & Cyber Codex      */
+/* ========================================================================= */
+export const KnowledgeCenterIcon: React.FC<IconBaseProps> = ({
+  size = 32,
+  className = '',
+  glow = true,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`transition-transform duration-200 ${className}`}
+    aria-label="Help: VulnFusion Technical Guidance & Knowledge Center"
+    {...props}
+  >
+    <defs>
+      <linearGradient id="know-left-folio" x1="9" y1="13" x2="24" y2="38" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#0F172A" />
+        <stop offset="100%" stopColor="#08213B" />
+      </linearGradient>
+      <linearGradient id="know-right-folio" x1="24" y1="13" x2="39" y2="38" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#08213B" />
+        <stop offset="100%" stopColor="#03446A" />
+      </linearGradient>
+    </defs>
+
+    {/* Cyber Guidance Codex - Left Folio Page */}
+    <path
+      d="M24 37C19 35 13.5 35 9 36.5V13.5C13.5 12 19 12 24 14V37Z"
+      fill="url(#know-left-folio)"
+      stroke="#38BDF8"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+
+    {/* Cyber Guidance Codex - Right Folio Page */}
+    <path
+      d="M24 37C29 35 34.5 35 39 36.5V13.5C34.5 12 29 12 24 14V37Z"
+      fill="url(#know-right-folio)"
+      stroke="#38BDF8"
+      strokeWidth="1.2"
+      strokeLinejoin="round"
+    />
+
+    {/* Central Knowledge Spine */}
+    <line x1="24" y1="14" x2="24" y2="37" stroke="#00F0FF" strokeWidth="1.4" strokeLinecap="round" />
+
+    {/* Left Technical Documentation Vectors */}
+    <line x1="13" y1="19" x2="20" y2="20" stroke="#7DD3FC" strokeWidth="1.1" strokeLinecap="round" />
+    <line x1="13" y1="24" x2="20" y2="25" stroke="#475569" strokeWidth="0.9" strokeLinecap="round" />
+    <line x1="13" y1="29" x2="18" y2="30" stroke="#334155" strokeWidth="0.9" strokeLinecap="round" />
+
+    {/* Right Technical Documentation Vectors */}
+    <line x1="28" y1="20" x2="35" y2="19" stroke="#7DD3FC" strokeWidth="1.1" strokeLinecap="round" />
+    <line x1="28" y1="25" x2="35" y2="24" stroke="#475569" strokeWidth="0.9" strokeLinecap="round" />
+    <line x1="30" y1="30" x2="35" y2="29" stroke="#334155" strokeWidth="0.9" strokeLinecap="round" />
+
+    {/* Upward Radiating Guidance Beacon Beam */}
+    <line x1="24" y1="14" x2="24" y2="7" stroke="#2DD4BF" strokeWidth="1.4" strokeLinecap="round" />
+
+    {/* Apex Guidance Node / Knowledge Diamond */}
+    <polygon points="24,4 27,7 24,10 21,7" fill="#2DD4BF" stroke="#FFFFFF" strokeWidth="0.75" />
+    <circle cx="24" cy="7" r="1.1" fill="#FFFFFF" />
+  </svg>
+);
+
+export const HelpKnowledgeIcon = KnowledgeCenterIcon;
+export const HelpIcon = KnowledgeCenterIcon;
+
+/* ========================================================================= */
+/* 19. PLATFORM CONFIGURATION ICON: Parameter Tuning, Policies & Controls    */
+/* ========================================================================= */
+export const PlatformConfigurationIcon: React.FC<IconBaseProps> = ({
+  size = 32,
+  className = '',
+  glow = true,
+  ...props
+}) => (
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 48 48"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    className={`transition-transform duration-200 ${className}`}
+    aria-label="Settings: Platform Configuration & Policy Engine"
+    {...props}
+  >
+    <defs>
+      <linearGradient id="cfg-plate" x1="11" y1="6" x2="37" y2="38" gradientUnits="userSpaceOnUse">
+        <stop offset="0%" stopColor="#1E293B" />
+        <stop offset="60%" stopColor="#0B1726" />
+        <stop offset="100%" stopColor="#040D17" />
+      </linearGradient>
+    </defs>
+
+    {/* Hexagonal Platform Parameter Chassis */}
+    <path
+      d="M24 6.5L37 14V29L24 36.5L11 29V14L24 6.5Z"
+      fill="url(#cfg-plate)"
+      stroke="#38BDF8"
+      strokeWidth="1.3"
+      strokeLinejoin="round"
+    />
+
+    {/* 6 Peripheral Platform Calibration Teeth / Interlocks */}
+    <line x1="24" y1="6.5" x2="24" y2="3" stroke="#00F0FF" strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="37" y1="14" x2="40" y2="12.5" stroke="#38BDF8" strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="37" y1="29" x2="40" y2="30.5" stroke="#38BDF8" strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="24" y1="36.5" x2="24" y2="40" stroke="#00F0FF" strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="11" y1="29" x2="8" y2="30.5" stroke="#38BDF8" strokeWidth="1.8" strokeLinecap="round" />
+    <line x1="11" y1="14" x2="8" y2="12.5" stroke="#38BDF8" strokeWidth="1.8" strokeLinecap="round" />
+
+    {/* Parameter Tuning Rail 1 (Top: Cyan Active Value) */}
+    <line x1="16" y1="17.5" x2="32" y2="17.5" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+    <line x1="16" y1="17.5" x2="23" y2="17.5" stroke="#00F0FF" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="23" cy="17.5" r="2.8" fill="#0C2340" stroke="#00F0FF" strokeWidth="1.2" />
+    <circle cx="23" cy="17.5" r="1.2" fill="#FFFFFF" />
+
+    {/* Parameter Tuning Rail 2 (Bottom: Emerald Policy Value) */}
+    <line x1="16" y1="25.5" x2="32" y2="25.5" stroke="#334155" strokeWidth="2" strokeLinecap="round" />
+    <line x1="16" y1="25.5" x2="28" y2="25.5" stroke="#34D399" strokeWidth="2" strokeLinecap="round" />
+    <circle cx="28" cy="25.5" r="2.8" fill="#063224" stroke="#34D399" strokeWidth="1.2" />
+    <circle cx="28" cy="25.5" r="1.2" fill="#FFFFFF" />
+
+    {/* Platform Health Matrix Status Dots (Bottom) */}
+    <circle cx="19" cy="31.5" r="1.2" fill="#38BDF8" />
+    <circle cx="24" cy="31.5" r="1.2" fill="#38BDF8" />
+    <circle cx="29" cy="31.5" r="1.2" fill="#34D399" />
+  </svg>
+);
+
+export const SettingsConfigIcon = PlatformConfigurationIcon;
+export const SettingsIcon = PlatformConfigurationIcon;
+

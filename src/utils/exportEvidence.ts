@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { addReportHeaderLogoPage1, addReportHeaderLogoPage2 } from './reportBrandAssets';
 import {
   UnderlyingAsset,
   AssetRecord,
@@ -310,7 +311,7 @@ function downloadBlob(blob: Blob, filename: string): void {
 }
 
 /**
- * EXPORT 1: PDF Format
+ * EXPORT 1: PDF Format (Enterprise Cybersecurity Intelligence Edition)
  */
 export function exportToPdf(exportData: CorrelationEvidenceExport, triggerDownload = true): string {
   const safeId = sanitizeFilename(exportData.reportMetadata.correlationId);
@@ -321,195 +322,782 @@ export function exportToPdf(exportData: CorrelationEvidenceExport, triggerDownlo
   const meta = exportData.reportMetadata;
   const summary = exportData.correlationSummary;
 
-  // Title & Header
+  // Format date helper
+  const formatReportDate = (isoStr: string): string => {
+    try {
+      const d = new Date(isoStr);
+      if (isNaN(d.getTime())) return isoStr;
+      const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+      const day = String(d.getUTCDate()).padStart(2, '0');
+      const month = months[d.getUTCMonth()];
+      const year = d.getUTCFullYear();
+      return `${day} ${month} ${year}`;
+    } catch {
+      return isoStr;
+    }
+  };
+
+  const formattedDate = formatReportDate(meta.generatedAt);
+
+  // Helper: Draw source vendor badge
+  const drawSourceVendorBadge = (tool: string, x: number, y: number, count?: number): number => {
+    const name = tool || 'Unknown';
+    let bg: [number, number, number] = [51, 65, 85];
+    let iconChar = '•';
+
+    if (name.toLowerCase().includes('qualys')) {
+      bg = [237, 28, 36]; // Qualys Red #ED1C24
+      iconChar = 'Q';
+    } else if (name.toLowerCase().includes('tenable')) {
+      bg = [0, 32, 91]; // Tenable Navy #00205B
+      iconChar = 'T';
+    } else if (name.toLowerCase().includes('rapid7')) {
+      bg = [234, 88, 12]; // Rapid7 Orange #EA580C
+      iconChar = '7';
+    } else if (name.toLowerCase().includes('wiz')) {
+      bg = [0, 117, 255]; // Wiz Blue #0075FF
+      iconChar = '✦';
+    }
+
+    const label = count !== undefined ? `${name} (${count})` : name;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    const tw = doc.getTextWidth(label);
+    const bw = tw + 8;
+    const bh = 5;
+
+    doc.setFillColor(bg[0], bg[1], bg[2]);
+    doc.roundedRect(x, y, bw, bh, 1, 1, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(5.5);
+    doc.text(iconChar, x + 1.8, y + 3.6);
+
+    doc.setFontSize(6.5);
+    doc.text(label, x + 5.2, y + 3.6);
+
+    return bw;
+  };
+
+  // 1. PAGE 1 HEADER (Compact Enterprise Header, max 35mm height)
+  // Background
   doc.setFillColor(11, 20, 32); // #0B1420
   doc.rect(0, 0, 210, 35, 'F');
+  doc.setDrawColor(30, 41, 59); // #1E293B
+  doc.setLineWidth(0.4);
+  doc.line(0, 35, 210, 35);
 
+  // Page 1 VulnFusion Logo (11mm icon size, upper-left)
+  addReportHeaderLogoPage1(doc, 14, 8, 11);
+
+  // Wordmark & Subtitle
   doc.setTextColor(0, 184, 255); // #00B8FF
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('VulnFusion', 14, 15);
+  doc.setFontSize(15);
+  doc.text('VulnFusion', 28, 15);
 
-  doc.setTextColor(244, 247, 251);
-  doc.setFontSize(11);
-  doc.text('CORRELATION EVIDENCE REPORT', 14, 23);
+  doc.setTextColor(244, 247, 251); // #F4F7FB
+  doc.setFontSize(9.5);
+  doc.text('CORRELATION EVIDENCE REPORT', 28, 22.5);
 
-  doc.setFontSize(8);
-  doc.setTextColor(168, 183, 201);
-  doc.text(`Generated: ${meta.generatedAt}`, 140, 15);
-  doc.text(`Correlation ID: ${summary.correlationId}`, 140, 21);
-  doc.text(`Asset: ${summary.candidateAssetGroup}`, 140, 27);
+  doc.setTextColor(148, 163, 184); // #94A3B8
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.text('Deterministic Multi-Scanner Telemetry & Identity Consolidation', 28, 28);
 
-  // Disclaimer banner
-  doc.setFillColor(24, 34, 48);
-  doc.rect(14, 40, 182, 14, 'F');
-  doc.setTextColor(148, 163, 184);
-  doc.setFontSize(7.5);
-  doc.text(`${meta.syntheticNotice} ${meta.disclaimer}`, 17, 48);
-
-  // Summary Grid
-  doc.setFontSize(10);
+  // Right Header Context Grid (aligned at x = 196)
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 184, 255);
-  doc.text('CORRELATION SUMMARY', 14, 62);
+  doc.setFontSize(6);
+  doc.setTextColor(148, 163, 184); // slate-400
+  doc.text('GENERATED', 196, 10, { align: 'right' });
+  doc.setFontSize(7.5);
+  doc.setTextColor(248, 250, 252);
+  doc.text(formattedDate, 196, 14, { align: 'right' });
 
-  const summaryRows = [
-    ['Candidate Asset Group', summary.candidateAssetGroup],
-    ['Correlation ID', summary.correlationId],
-    ['Correlation Status', summary.status],
-    ['Confidence Score', `${summary.confidence}%`],
-    ['Signals Evaluated', `${summary.matchedCount} matched / ${summary.conflictCount} conflicts (${summary.evaluatedCount} total)`],
-  ];
+  doc.setFontSize(6);
+  doc.setTextColor(148, 163, 184);
+  doc.text('CORRELATION ID', 196, 19, { align: 'right' });
+  doc.setFontSize(7.5);
+  doc.setTextColor(56, 189, 248); // cyan
+  doc.text(summary.correlationId, 196, 23, { align: 'right' });
 
-  autoTable(doc, {
-    startY: 65,
-    head: [['Attribute', 'Deterministic Engine Value']],
-    body: summaryRows,
-    theme: 'grid',
-    headStyles: { fillColor: [27, 48, 69], textColor: [244, 247, 251], fontStyle: 'bold' },
-    bodyStyles: { textColor: [30, 41, 59], fontSize: 8.5 },
+  doc.setFontSize(6);
+  doc.setTextColor(148, 163, 184);
+  doc.text('ASSET', 196, 28, { align: 'right' });
+  doc.setFontSize(7.5);
+  doc.setTextColor(248, 250, 252);
+  doc.text(summary.candidateAssetGroup, 196, 32, { align: 'right' });
+
+  // 2. VERTICAL LAYOUT CURSOR SYSTEM
+  let cursorY = 40; // 5mm below header
+  const pageBottomLimit = 270; // footer begins at 283mm
+
+  const ensureSpace = (requiredHeight: number) => {
+    if (cursorY + requiredHeight > pageBottomLimit) {
+      doc.addPage();
+      cursorY = 20; // below running header
+    }
+  };
+
+  const advance = (height: number) => {
+    cursorY += height;
+  };
+
+  // 3. SYNTHETIC DATA NOTICE (Dynamic height, safe wrapping, zero overflow)
+  const noticeWidth = 182;
+  const noticeX = 14;
+  const disclaimerFullText = `${meta.syntheticNotice} ${meta.disclaimer}`;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  const textLines = doc.splitTextToSize(disclaimerFullText, noticeWidth - 16);
+  const lineHeight = 3.6;
+  const noticeHeight = Math.max(16, 8 + textLines.length * lineHeight + 4);
+
+  ensureSpace(noticeHeight);
+
+  // Background Box
+  doc.setFillColor(15, 23, 42); // #0F172A
+  doc.roundedRect(noticeX, cursorY, noticeWidth, noticeHeight, 1.5, 1.5, 'F');
+  doc.setDrawColor(30, 41, 59); // #1E293B
+  doc.setLineWidth(0.3);
+  doc.roundedRect(noticeX, cursorY, noticeWidth, noticeHeight, 1.5, 1.5, 'S');
+
+  // Cyan Accent Indicator Bar on Left
+  doc.setFillColor(2, 132, 199); // #0284C7
+  doc.roundedRect(noticeX, cursorY, 2.5, noticeHeight, 1, 1, 'F');
+
+  // Section Header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.8);
+  doc.setTextColor(56, 189, 248); // #38BDF8
+  doc.text('SYNTHETIC DATA NOTICE', noticeX + 7, cursorY + 5.5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6);
+  doc.setTextColor(148, 163, 184);
+  doc.text('•  DEMONSTRATION TELEMETRY', noticeX + 44, cursorY + 5.5);
+
+  // Notice Body Text
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(203, 213, 225); // slate-300
+  doc.text(textLines, noticeX + 7, cursorY + 9.8);
+
+  advance(noticeHeight + 6);
+
+  // 4. CORRELATION SUMMARY (Visual Summary Card & Metrics)
+  const summaryCardHeight = 38;
+  ensureSpace(summaryCardHeight + 8);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(2, 132, 199); // #0284C7
+  doc.text('CORRELATION SUMMARY', 14, cursorY);
+  advance(3.5);
+
+  const cardY = cursorY;
+  // Card Container
+  doc.setFillColor(248, 250, 252); // #F8FAFC
+  doc.roundedRect(14, cardY, 182, summaryCardHeight, 2, 2, 'F');
+  doc.setDrawColor(203, 213, 225); // #CBD5E1
+  doc.setLineWidth(0.4);
+  doc.roundedRect(14, cardY, 182, summaryCardHeight, 2, 2, 'S');
+
+  // Top Section: Status Badge + Asset Name + Context
+  let badgeBg: [number, number, number] = [254, 243, 199]; // amber-100
+  let badgeBorder: [number, number, number] = [253, 230, 138];
+  let badgeText: [number, number, number] = [146, 64, 14]; // amber-800
+  const statusLabel = summary.status || 'UNKNOWN';
+
+  if (statusLabel === 'CORRELATED') {
+    badgeBg = [220, 252, 231]; // green-100
+    badgeBorder = [134, 239, 172];
+    badgeText = [22, 101, 52];
+  } else if (statusLabel === 'SEPARATE') {
+    badgeBg = [254, 226, 226]; // red-100
+    badgeBorder = [252, 165, 165];
+    badgeText = [153, 27, 27];
+  }
+
+  // Draw status badge
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  const statusBadgeWidth = doc.getTextWidth(statusLabel) + 8;
+  doc.setFillColor(badgeBg[0], badgeBg[1], badgeBg[2]);
+  doc.roundedRect(18, cardY + 4, statusBadgeWidth, 5.5, 1, 1, 'F');
+  doc.setDrawColor(badgeBorder[0], badgeBorder[1], badgeBorder[2]);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(18, cardY + 4, statusBadgeWidth, 5.5, 1, 1, 'S');
+  doc.setTextColor(badgeText[0], badgeText[1], badgeText[2]);
+  doc.text(statusLabel, 18 + statusBadgeWidth / 2, cardY + 7.8, { align: 'center' });
+
+  // Asset Canonical Hostname
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(15, 23, 42); // #0F172A
+  doc.text(summary.candidateAssetGroup, 18 + statusBadgeWidth + 5, cardY + 8);
+
+  // Candidate Asset Group & ID
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 116, 139); // slate-500
+  doc.text(`Candidate Asset Group • ${summary.correlationId}`, 18, cardY + 14);
+
+  // Evaluated Signals summary right-aligned
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.setTextColor(71, 85, 105);
+  doc.text(`${summary.evaluatedCount} Signals Evaluated`, 192, cardY + 8, { align: 'right' });
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(6.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('100% Deterministic Engine Authority', 192, cardY + 13, { align: 'right' });
+
+  // Divider Line inside Card
+  doc.setDrawColor(226, 232, 240); // slate-200
+  doc.setLineWidth(0.3);
+  doc.line(18, cardY + 17, 192, cardY + 17);
+
+  // 4 Metric Tiles Row
+  const tileWidth = 41;
+  const tileStartX = 18;
+  const tileY = cardY + 20;
+
+  // Tile 1: Confidence
+  const confColor: [number, number, number] =
+    summary.confidence >= 80 ? [5, 150, 105] : summary.confidence >= 50 ? [217, 119, 6] : [220, 38, 38];
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(confColor[0], confColor[1], confColor[2]);
+  doc.text(`${summary.confidence}%`, tileStartX, tileY + 6);
+  doc.setFontSize(6);
+  doc.setTextColor(100, 116, 139);
+  doc.text('CONFIDENCE', tileStartX, tileY + 10.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Deterministic score', tileStartX, tileY + 14);
+
+  // Tile 2: Records
+  const tile2X = tileStartX + tileWidth + 2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`${exportData.sourceRecords.length}`, tile2X, tileY + 6);
+  doc.setFontSize(6);
+  doc.setTextColor(100, 116, 139);
+  doc.text('SOURCE RECORDS', tile2X, tileY + 10.5);
+  const uniqueScanners = Array.from(new Set(exportData.sourceRecords.map(r => r.sourceTool)));
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text(`${uniqueScanners.length} Scanner Tools`, tile2X, tileY + 14);
+
+  // Tile 3: Signals
+  const tile3X = tile2X + tileWidth + 2;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(5, 150, 105);
+  doc.text(`${summary.matchedCount}`, tile3X, tileY + 6);
+  doc.setFontSize(6);
+  doc.setTextColor(100, 116, 139);
+  doc.text('MATCHED SIGNALS', tile3X, tileY + 10.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text('Corroborated identity', tile3X, tileY + 14);
+
+  // Tile 4: Conflicts
+  const tile4X = tile3X + tileWidth + 2;
+  const conflictColor: [number, number, number] =
+    summary.conflictCount > 0 ? [217, 119, 6] : [5, 150, 105];
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.setTextColor(conflictColor[0], conflictColor[1], conflictColor[2]);
+  doc.text(`${summary.conflictCount}`, tile4X, tileY + 6);
+  doc.setFontSize(6);
+  doc.setTextColor(100, 116, 139);
+  doc.text('CONFLICTS', tile4X, tileY + 10.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text(summary.conflictCount > 0 ? 'Discrepancies noted' : 'Zero conflicts', tile4X, tileY + 14);
+
+  advance(summaryCardHeight + 6);
+
+  // 5. SOURCE INGESTION TOPOLOGY & OBSERVATION TIMELINE
+  const activeSources = Array.from(new Set(exportData.sourceRecords.map(r => r.sourceTool)));
+  const topologyCardHeight = Math.max(34, activeSources.length * 6.5 + 14);
+  ensureSpace(topologyCardHeight + 8);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8.5);
+  doc.setTextColor(2, 132, 199);
+  doc.text('SOURCE TOPOLOGY & EVIDENCE TIMELINE', 14, cursorY);
+  advance(3.5);
+
+  const topCardY = cursorY;
+  doc.setFillColor(255, 255, 255);
+  doc.roundedRect(14, topCardY, 182, topologyCardHeight, 1.5, 1.5, 'F');
+  doc.setDrawColor(226, 232, 240);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(14, topCardY, 182, topologyCardHeight, 1.5, 1.5, 'S');
+
+  // Left Label
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(100, 116, 139);
+  doc.text('INGESTED SCANNER SOURCES', 18, topCardY + 5);
+
+  // Draw Source Badges and Relationship Lines
+  const sourceCenterYPositions: number[] = [];
+
+  activeSources.forEach((src, idx) => {
+    const sY = topCardY + 8 + idx * 6.5;
+    const count = exportData.sourceRecords.filter(r => r.sourceTool === src).length;
+    const bWidth = drawSourceVendorBadge(src, 18, sY, count);
+    const midSY = sY + 2.5;
+    sourceCenterYPositions.push(midSY);
+
+    // Horizontal line from badge right to collector bus at x = 54
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.4);
+    doc.line(18 + bWidth, midSY, 54, midSY);
   });
 
-  // Source Records Table
-  const lastY = (doc as any).lastAutoTable?.finalY || 110;
-  doc.setFontSize(10);
+  // Vertical Collector Bus line & Target Asset Box
+  if (sourceCenterYPositions.length > 0) {
+    const firstSY = sourceCenterYPositions[0];
+    const lastSY = sourceCenterYPositions[sourceCenterYPositions.length - 1];
+    const spineMidY = (firstSY + lastSY) / 2;
+
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.4);
+    doc.line(54, firstSY, 54, lastSY);
+
+    // Connector from spine to target asset box
+    doc.line(54, spineMidY, 68, spineMidY);
+    // Arrow head
+    doc.setFillColor(100, 116, 139);
+    doc.triangle(68, spineMidY, 65, spineMidY - 1.2, 65, spineMidY + 1.2, 'FD');
+
+    // Target Asset Box
+    const targetBoxWidth = 42;
+    const targetBoxHeight = 10;
+    const targetBoxX = 70;
+    const targetBoxY = spineMidY - targetBoxHeight / 2;
+
+    doc.setFillColor(241, 245, 249); // slate-100
+    doc.roundedRect(targetBoxX, targetBoxY, targetBoxWidth, targetBoxHeight, 1.2, 1.2, 'F');
+    doc.setDrawColor(203, 213, 225);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(targetBoxX, targetBoxY, targetBoxWidth, targetBoxHeight, 1.2, 1.2, 'S');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.8);
+    doc.setTextColor(15, 23, 42);
+    doc.text(summary.candidateAssetGroup, targetBoxX + 4, targetBoxY + 4.2);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`${summary.correlationId} • Normalized`, targetBoxX + 4, targetBoxY + 8);
+  }
+
+  // Right Side: Evidence Observation Timeline
+  const timelineStartX = 124;
+  const timelineEndX = 186;
+  const timelineMidY = topCardY + topologyCardHeight / 2;
+
+  // Timeline Title
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 184, 255);
-  doc.text('SOURCE RECORDS', 14, lastY + 10);
+  doc.setFontSize(6);
+  doc.setTextColor(100, 116, 139);
+  doc.text('EVIDENCE OBSERVATION TIMELINE', timelineStartX, topCardY + 5);
+
+  // Extract dates
+  const allObsDates = exportData.sourceRecords
+    .flatMap(r => [r.firstObserved, r.lastObserved])
+    .filter(d => d && d !== 'N/A' && d.includes('-'))
+    .sort();
+
+  const firstObs = allObsDates[0] ? allObsDates[0].split('T')[0] : 'N/A';
+  const lastObs = allObsDates[allObsDates.length - 1]
+    ? allObsDates[allObsDates.length - 1].split('T')[0]
+    : 'N/A';
+
+  // Connecting bar
+  doc.setDrawColor(203, 213, 225);
+  doc.setLineWidth(0.6);
+  doc.line(timelineStartX, timelineMidY, timelineEndX, timelineMidY);
+
+  // Start Node
+  doc.setFillColor(2, 132, 199); // cyan
+  doc.circle(timelineStartX, timelineMidY, 1.4, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5.2);
+  doc.setTextColor(100, 116, 139);
+  doc.text('FIRST OBSERVED', timelineStartX, timelineMidY - 3);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.2);
+  doc.setTextColor(15, 23, 42);
+  doc.text(firstObs, timelineStartX, timelineMidY + 4.8);
+
+  // End Node
+  doc.setFillColor(16, 185, 129); // emerald
+  doc.circle(timelineEndX, timelineMidY, 1.4, 'FD');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(5.2);
+  doc.setTextColor(100, 116, 139);
+  doc.text('LAST OBSERVED', timelineEndX, timelineMidY - 3, { align: 'right' });
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.2);
+  doc.setTextColor(15, 23, 42);
+  doc.text(lastObs, timelineEndX, timelineMidY + 4.8, { align: 'right' });
+
+  // Sub-caption
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(5.5);
+  doc.setTextColor(148, 163, 184);
+  doc.text(
+    `${exportData.sourceRecords.length} records ingested across ${activeSources.length} scanning engines`,
+    (timelineStartX + timelineEndX) / 2,
+    topCardY + topologyCardHeight - 3,
+    { align: 'center' }
+  );
+
+  advance(topologyCardHeight + 6);
+
+  // 6. SOURCE RECORDS TABLE
+  ensureSpace(28);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(15, 23, 42);
+  doc.text(`SOURCE SCANNER TELEMETRY RECORDS (${exportData.sourceRecords.length})`, 14, cursorY);
+  advance(3.5);
 
   const recordRows = exportData.sourceRecords.map(r => [
     r.sourceTool,
     r.recordId,
-    r.hostname,
+    r.hostname + (r.fqdn && r.fqdn !== 'N/A' && r.fqdn !== r.hostname ? `\n${r.fqdn}` : ''),
     r.ipAddresses.join(', ') || 'N/A',
-    r.operatingSystem,
-    r.observationMethod,
+    `${r.operatingSystem || 'N/A'}${r.macAddress && r.macAddress !== 'N/A' ? `\nMAC: ${r.macAddress}` : ''}`,
+    r.observationMethod || 'Direct Scan',
   ]);
 
   autoTable(doc, {
-    startY: lastY + 13,
-    head: [['Scanner Tool', 'Record ID', 'Hostname', 'IP Address(es)', 'OS', 'Method']],
+    startY: cursorY,
+    head: [['Scanner Tool', 'Record ID', 'Hostname / FQDN', 'IP Address(es)', 'Operating System', 'Method']],
     body: recordRows.length > 0 ? recordRows : [['No source records available', '-', '-', '-', '-', '-']],
-    theme: 'striped',
-    headStyles: { fillColor: [27, 48, 69], textColor: [244, 247, 251] },
-    bodyStyles: { fontSize: 8 },
+    theme: 'grid',
+    margin: { top: 20, bottom: 20, left: 14, right: 14 },
+    headStyles: { fillColor: [15, 23, 42], textColor: [248, 250, 252], fontStyle: 'bold', fontSize: 7.5 },
+    bodyStyles: { fontSize: 7, textColor: [30, 41, 59], cellPadding: 2 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
+    columnStyles: {
+      0: { cellWidth: 24, fontStyle: 'bold' },
+      1: { cellWidth: 26, font: 'courier' },
+      2: { cellWidth: 36 },
+      3: { cellWidth: 32 },
+      4: { cellWidth: 40 },
+      5: { cellWidth: 24 },
+    },
   });
 
-  // Matched Signals Table
-  const lastY2 = (doc as any).lastAutoTable?.finalY || 160;
-  doc.setFontSize(10);
+  cursorY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 8 : cursorY + 25;
+
+  // PAGE 2: Clean break for Identity Signals, Findings, Governance, and AI Explanation
+  doc.addPage();
+  cursorY = 20; // below running header
+
+  // 7. MATCHED SIGNALS TABLE
+  ensureSpace(28);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 214, 163); // #00D6A3
-  doc.text('MATCHED SIGNALS', 14, lastY2 + 10);
+  doc.setFontSize(9);
+  doc.setTextColor(5, 150, 105); // emerald
+  doc.text(`MATCHED IDENTITY SIGNALS (${exportData.matchedSignals.length})`, 14, cursorY);
+  advance(3.5);
 
   const matchedRows = exportData.matchedSignals.map(s => [
     s.signalName,
     s.attribute,
-    `Weight: +${s.weight}`,
+    `+${s.weight}`,
     s.supportingRecordIds.join(', '),
     s.explanation,
   ]);
 
   autoTable(doc, {
-    startY: lastY2 + 13,
-    head: [['Signal', 'Category', 'Weight', 'Records', 'Evidence']],
+    startY: cursorY,
+    head: [['Signal Name', 'Category', 'Weight', 'Supporting Records', 'Deterministic Evidence Explanation']],
     body: matchedRows.length > 0 ? matchedRows : [['No matched signals recorded', '-', '-', '-', '-']],
     theme: 'grid',
-    headStyles: { fillColor: [0, 100, 80], textColor: [244, 247, 251] },
-    bodyStyles: { fontSize: 8 },
+    margin: { top: 20, bottom: 20, left: 14, right: 14 },
+    headStyles: { fillColor: [6, 78, 59], textColor: [248, 250, 252], fontStyle: 'bold', fontSize: 7.5 },
+    bodyStyles: { fontSize: 7, textColor: [30, 41, 59], cellPadding: 2 },
+    alternateRowStyles: { fillColor: [240, 253, 244] },
+    columnStyles: {
+      0: { cellWidth: 36, fontStyle: 'bold' },
+      1: { cellWidth: 22 },
+      2: { cellWidth: 14, halign: 'center', fontStyle: 'bold', textColor: [5, 150, 105] },
+      3: { cellWidth: 32, font: 'courier' },
+      4: { cellWidth: 78 },
+    },
   });
 
-  // Conflicting Signals Table
-  const lastY3 = (doc as any).lastAutoTable?.finalY || 210;
-  doc.setFontSize(10);
+  cursorY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 8 : cursorY + 25;
+
+  // 8. CONFLICTING SIGNALS TABLE
+  ensureSpace(22);
   doc.setFont('helvetica', 'bold');
-  doc.setTextColor(245, 166, 35); // Amber
-  doc.text('CONFLICTING SIGNALS', 14, lastY3 + 10);
+  doc.setFontSize(9);
+  doc.setTextColor(217, 119, 6); // amber
+  doc.text(`CONFLICTING & UNCERTAIN SIGNALS (${exportData.conflictingSignals.length})`, 14, cursorY);
+  advance(3.5);
 
-  const conflictRows = exportData.conflictingSignals.map(c => [
-    c.signalName,
-    c.attribute,
-    `Penalty: ${c.weight}`,
-    c.conflictingRecordIds.join(', '),
-    c.explanation,
-  ]);
+  if (exportData.conflictingSignals.length > 0) {
+    const conflictRows = exportData.conflictingSignals.map(c => [
+      c.signalName,
+      c.attribute,
+      `${c.weight}`,
+      c.conflictingRecordIds.join(', '),
+      c.explanation,
+    ]);
 
-  autoTable(doc, {
-    startY: lastY3 + 13,
-    head: [['Signal', 'Category', 'Penalty', 'Records', 'Conflict Detail']],
-    body: conflictRows.length > 0 ? conflictRows : [['No conflicting signals detected', '-', '-', '-', '-']],
-    theme: 'grid',
-    headStyles: { fillColor: [140, 80, 0], textColor: [244, 247, 251] },
-    bodyStyles: { fontSize: 8 },
-  });
+    autoTable(doc, {
+      startY: cursorY,
+      head: [['Conflicting Signal', 'Category', 'Penalty', 'Conflicting Records', 'Discrepancy Detail']],
+      body: conflictRows,
+      theme: 'grid',
+      margin: { top: 20, bottom: 20, left: 14, right: 14 },
+      headStyles: { fillColor: [120, 53, 15], textColor: [248, 250, 252], fontStyle: 'bold', fontSize: 7.5 },
+      bodyStyles: { fontSize: 7, textColor: [30, 41, 59], cellPadding: 2 },
+      alternateRowStyles: { fillColor: [254, 243, 199] },
+      columnStyles: {
+        0: { cellWidth: 36, fontStyle: 'bold' },
+        1: { cellWidth: 22 },
+        2: { cellWidth: 14, halign: 'center', fontStyle: 'bold', textColor: [217, 119, 6] },
+        3: { cellWidth: 32, font: 'courier' },
+        4: { cellWidth: 78 },
+      },
+    });
 
-  // Page 2: Findings, Decisions, AI Explanation
-  doc.addPage();
-  doc.setFillColor(11, 20, 32);
-  doc.rect(0, 0, 210, 20, 'F');
-  doc.setFontSize(10);
-  doc.setTextColor(0, 184, 255);
-  doc.text(`VulnFusion Correlation Report — ${summary.correlationId} (Page 2)`, 14, 13);
+    cursorY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 8 : cursorY + 25;
+  } else {
+    // Clean zero conflict card
+    const zeroCardHeight = 12;
+    doc.setFillColor(240, 253, 244); // green-50
+    doc.roundedRect(14, cursorY, 182, zeroCardHeight, 1.5, 1.5, 'F');
+    doc.setDrawColor(187, 247, 208); // green-200
+    doc.setLineWidth(0.3);
+    doc.roundedRect(14, cursorY, 182, zeroCardHeight, 1.5, 1.5, 'S');
 
-  // Related Findings
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(0, 184, 255);
-  doc.text('ASSOCIATED VULNERABILITY FINDINGS', 14, 28);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(22, 101, 52);
+    doc.text('✓ ZERO CONFLICTING SIGNALS DETECTED', 18, cursorY + 4.8);
 
-  const findingRows = exportData.relatedFindings.map(f => [
-    f.findingId,
-    f.sourceTool,
-    f.vulnerabilityId,
-    f.title,
-    f.severity,
-    String(f.cvss),
-    f.status,
-  ]);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.8);
+    doc.setTextColor(22, 101, 52);
+    doc.text('All ingested scanner records exhibit 100% attribute consistency for evaluated identity signals.', 18, cursorY + 8.8);
 
-  autoTable(doc, {
-    startY: 31,
-    head: [['Finding ID', 'Tool', 'CVE / Vuln ID', 'Title', 'Severity', 'CVSS', 'Status']],
-    body: findingRows.length > 0 ? findingRows : [['No associated findings recorded', '-', '-', '-', '-', '-', '-']],
-    theme: 'striped',
-    headStyles: { fillColor: [27, 48, 69], textColor: [244, 247, 251] },
-    bodyStyles: { fontSize: 7.5 },
-  });
+    advance(zeroCardHeight + 8);
+  }
 
-  // AI Explanation Section
-  const lastY4 = (doc as any).lastAutoTable?.finalY || 80;
-  doc.setFontSize(10);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(168, 85, 247); // Purple
-  doc.text(`${exportData.aiExplanation.headerNotice}`, 14, lastY4 + 10);
+  // 9. ASSOCIATED VULNERABILITY FINDINGS
+  if (exportData.relatedFindings.length > 0) {
+    ensureSpace(28);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(15, 23, 42);
+    doc.text(`ASSOCIATED VULNERABILITY FINDINGS (${exportData.relatedFindings.length})`, 14, cursorY);
+    advance(3.5);
 
-  doc.setFontSize(8);
+    const findingRows = exportData.relatedFindings.map(f => [
+      f.findingId,
+      f.sourceTool,
+      f.vulnerabilityId,
+      f.title,
+      f.severity,
+      String(f.cvss),
+      f.status,
+    ]);
+
+    autoTable(doc, {
+      startY: cursorY,
+      head: [['Finding ID', 'Tool', 'CVE / Vuln ID', 'Title', 'Severity', 'CVSS', 'Status']],
+      body: findingRows,
+      theme: 'striped',
+      margin: { top: 20, bottom: 20, left: 14, right: 14 },
+      headStyles: { fillColor: [30, 41, 59], textColor: [248, 250, 252], fontStyle: 'bold', fontSize: 7.5 },
+      bodyStyles: { fontSize: 7, textColor: [30, 41, 59], cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 24, font: 'courier' },
+        1: { cellWidth: 20 },
+        2: { cellWidth: 26, font: 'courier' },
+        3: { cellWidth: 56 },
+        4: { cellWidth: 18, halign: 'center', fontStyle: 'bold' },
+        5: { cellWidth: 14, halign: 'center' },
+        6: { cellWidth: 24, halign: 'center' },
+      },
+    });
+
+    cursorY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 8 : cursorY + 25;
+  }
+
+  // 10. GOVERNANCE & EXCEPTION AUDIT TRAIL (if present)
+  const hasDecisions = exportData.analystDecisions.length > 0;
+  const hasExceptions = exportData.exceptions.length > 0;
+
+  if (hasDecisions || hasExceptions) {
+    ensureSpace(26);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text('ANALYST GOVERNANCE & EXCEPTION LOG', 14, cursorY);
+    advance(3.5);
+
+    const auditRows: string[][] = [];
+    exportData.analystDecisions.forEach(d => {
+      auditRows.push([
+        d.timestamp.split('T')[0] || d.timestamp,
+        `Decision: ${d.decision}`,
+        d.reason || d.analystNote || 'Session action recorded',
+        d.affectedRecordIds.join(', ') || 'Asset cluster',
+      ]);
+    });
+    exportData.exceptions.forEach(e => {
+      auditRows.push([
+        e.createdAt.split('T')[0] || e.createdAt,
+        `Exception (${e.status}): ${e.exceptionId}`,
+        e.reason || e.analystNote || 'Audit exception granted',
+        e.recordIds.join(', ') || e.assetGroupId,
+      ]);
+    });
+
+    autoTable(doc, {
+      startY: cursorY,
+      head: [['Timestamp', 'Governance Action', 'Justification / Notes', 'Scope / Records']],
+      body: auditRows,
+      theme: 'grid',
+      margin: { top: 20, bottom: 20, left: 14, right: 14 },
+      headStyles: { fillColor: [51, 65, 85], textColor: [248, 250, 252], fontStyle: 'bold', fontSize: 7 },
+      bodyStyles: { fontSize: 6.8, textColor: [30, 41, 59], cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 24 },
+        1: { cellWidth: 42, fontStyle: 'bold' },
+        2: { cellWidth: 76 },
+        3: { cellWidth: 40, font: 'courier' },
+      },
+    });
+
+    cursorY = (doc as any).lastAutoTable?.finalY ? (doc as any).lastAutoTable.finalY + 8 : cursorY + 25;
+  }
+
+  // 11. AI EXPLANATION SECTION (Non-authoritative boundary)
+  const aiExplanationText = exportData.aiExplanation.text || 'No AI explanation generated.';
   doc.setFont('helvetica', 'normal');
-  doc.setTextColor(51, 65, 85);
+  doc.setFontSize(7.5);
+  const aiLines = doc.splitTextToSize(aiExplanationText, 170);
+  const aiBoxHeight = Math.max(22, 12 + aiLines.length * 3.8 + 6);
 
-  const explanationLines = doc.splitTextToSize(
-    exportData.aiExplanation.text || 'No AI explanation generated.',
-    182
-  );
-  doc.text(explanationLines, 14, lastY4 + 16);
+  ensureSpace(aiBoxHeight + 8);
 
-  // Deterministic Authority Footer Notice on every page
-  const pageCount = (doc as any).internal.getNumberOfPages();
-  for (let i = 1; i <= pageCount; i++) {
-    doc.setPage(i);
-    doc.setFillColor(11, 20, 32);
-    doc.rect(0, 282, 210, 15, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(126, 34, 206); // purple-700
+  doc.text(exportData.aiExplanation.headerNotice, 14, cursorY);
+  advance(3.5);
 
-    doc.setFontSize(6.5);
+  const aiBoxY = cursorY;
+  doc.setFillColor(250, 245, 255); // purple-50
+  doc.roundedRect(14, aiBoxY, 182, aiBoxHeight, 1.5, 1.5, 'F');
+  doc.setDrawColor(233, 213, 255); // purple-200
+  doc.setLineWidth(0.3);
+  doc.roundedRect(14, aiBoxY, 182, aiBoxHeight, 1.5, 1.5, 'S');
+
+  // Purple accent indicator bar
+  doc.setFillColor(168, 85, 247); // purple-500
+  doc.roundedRect(14, aiBoxY, 2.5, aiBoxHeight, 1, 1, 'F');
+
+  // Sub-disclaimer inside AI box
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6.2);
+  doc.setTextColor(126, 34, 206);
+  doc.text('EXPLANATORY CONTEXT ONLY • NON-AUTHORITATIVE', 20, aiBoxY + 5);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.setTextColor(51, 65, 85); // slate-700
+  doc.text(aiLines, 20, aiBoxY + 9.5);
+
+  advance(aiBoxHeight + 8);
+
+  // 11. RUNNING HEADERS & FOOTERS ACROSS ALL PAGES
+  const totalPages = (doc as any).internal.getNumberOfPages();
+
+  for (let p = 1; p <= totalPages; p++) {
+    doc.setPage(p);
+
+    // Running Header on Pages 2+
+    if (p >= 2) {
+      doc.setFillColor(11, 20, 32); // #0B1420
+      doc.rect(0, 0, 210, 14, 'F');
+      doc.setDrawColor(30, 41, 59);
+      doc.setLineWidth(0.3);
+      doc.line(0, 14, 210, 14);
+
+      // Running logo (6mm)
+      addReportHeaderLogoPage2(doc, 14, 3.8, 6);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7.5);
+      doc.setTextColor(56, 189, 248);
+      doc.text(`VulnFusion Correlation Evidence Report`, 23, 7.5);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(6.5);
+      doc.setTextColor(148, 163, 184);
+      doc.text(`—  ${summary.candidateAssetGroup} (${summary.correlationId})`, 82, 7.5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6);
+      doc.setTextColor(148, 163, 184);
+      doc.text('ENTERPRISE SECURITY INTELLIGENCE', 196, 7.5, { align: 'right' });
+    }
+
+    // Running Footer on All Pages (1..N)
+    doc.setFillColor(11, 20, 32); // #0B1420
+    doc.rect(0, 283, 210, 14, 'F');
+    doc.setDrawColor(30, 41, 59);
+    doc.setLineWidth(0.3);
+    doc.line(0, 283, 210, 283);
+
+    // Left: Deterministic Authority Notice
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
     doc.setTextColor(148, 163, 184);
     doc.text(
       meta.deterministicAuthorityNotice,
       14,
-      287,
-      { maxWidth: 182 }
+      288,
+      { maxWidth: 148 }
     );
+
+    // Right: Confidential & Page Count
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(248, 250, 252);
+    doc.text(`PAGE ${p} OF ${totalPages}`, 196, 288.5, { align: 'right' });
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(5.5);
+    doc.setTextColor(100, 116, 139);
+    doc.text('CONFIDENTIAL • AUDIT GRADE', 196, 292.5, { align: 'right' });
   }
 
+  // Browser download trigger
   if (triggerDownload && typeof window !== 'undefined' && typeof document !== 'undefined') {
     try {
       doc.save(filename);
@@ -517,6 +1105,9 @@ export function exportToPdf(exportData: CorrelationEvidenceExport, triggerDownlo
       console.warn('doc.save bypassed in headless context:', e);
     }
   }
+
+  (exportToPdf as any).lastDoc = doc;
+
   return filename;
 }
 

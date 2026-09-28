@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { UnderlyingAsset, AssetRecord, VulnerabilityFinding, FindingCorrelationGroup, AIAnalystInsight } from '../types/vulnfusion';
+import { addReportHeaderLogoPage1, addReportHeaderLogoPage2, VULNFUSION_LOGO_SVG } from './reportBrandAssets';
 
 function formatDateForFilename(): string {
   const d = new Date();
@@ -217,9 +218,13 @@ export function exportExecutiveToHtml(
   <style>
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #070D14; color: #F1F5F9; margin: 0; padding: 32px; line-height: 1.5; }
     .container { max-width: 1100px; margin: 0 auto; }
-    .header { border-bottom: 1px solid #1E293B; padding-bottom: 20px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-end; }
-    .title { font-size: 26px; font-weight: 800; color: #38BDF8; margin: 0 0 6px 0; letter-spacing: -0.5px; }
+    .header { border-bottom: 1px solid #1E293B; padding-bottom: 24px; margin-bottom: 28px; display: flex; justify-content: space-between; align-items: flex-start; }
+    .header-brand { display: flex; flex-direction: column; gap: 8px; }
+    .logo-container { display: flex; align-items: center; margin-bottom: 2px; }
+    .title { font-size: 24px; font-weight: 800; color: #38BDF8; margin: 0; letter-spacing: -0.5px; }
     .subtitle { font-size: 13px; color: #94A3B8; margin: 0; }
+    .header-status-group { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+    .header-meta { font-size: 11px; color: #64748B; font-family: monospace; }
     .status-badge { background: rgba(16, 185, 129, 0.15); color: #34D399; border: 1px solid rgba(16, 185, 129, 0.3); padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; }
     .kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 32px; }
     .kpi-card { background: #0F172A; border: 1px solid #1E293B; border-radius: 10px; padding: 18px; }
@@ -240,12 +245,16 @@ export function exportExecutiveToHtml(
 <body>
   <div class="container">
     <div class="header">
-      <div>
+      <div class="header-brand">
+        <div class="logo-container" aria-label="VulnFusion Logo">
+          ${VULNFUSION_LOGO_SVG}
+        </div>
         <h1 class="title">VulnFusion Executive Intelligence Brief</h1>
         <p class="subtitle">Unified visibility across Qualys, Tenable, Rapid7 and Wiz • Deterministic Correlation Engine</p>
       </div>
-      <div>
+      <div class="header-status-group">
         <span class="status-badge">● OPERATIONAL</span>
+        <div class="header-meta">Generated: ${new Date().toUTCString()}</div>
       </div>
     </div>
 
@@ -406,6 +415,20 @@ export function exportExecutiveToMarkdown(
   return filename;
 }
 
+function formatExecutiveTimestamp(d: Date = new Date()): string {
+  try {
+    const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const day = String(d.getUTCDate()).padStart(2, '0');
+    const month = months[d.getUTCMonth()];
+    const year = d.getUTCFullYear();
+    const hours = String(d.getUTCHours()).padStart(2, '0');
+    const mins = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${day} ${month} ${year} ${hours}:${mins} GMT`;
+  } catch {
+    return d.toISOString();
+  }
+}
+
 // 5. PDF EXPORT
 export function exportExecutiveToPdf(
   records: AssetRecord[],
@@ -418,30 +441,88 @@ export function exportExecutiveToPdf(
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
   const attentionItems = clusters.filter(c => c.correlationStatus === 'REVIEW_REQUIRED');
 
-  // Header Background
+  // Page Grid Constants
+  const PAGE_WIDTH = 210;
+  const CONTENT_LEFT = 14;
+  const CONTENT_RIGHT = 196;
+  const CONTENT_WIDTH = CONTENT_RIGHT - CONTENT_LEFT; // 182 mm
+
+  // Two-Column Grid: Left Content (67%), Gap (6%), Right Metadata (27%)
+  const LEFT_COLUMN_WIDTH = Math.round(CONTENT_WIDTH * 0.67); // 122 mm
+  const RIGHT_COLUMN_WIDTH = Math.round(CONTENT_WIDTH * 0.27); // 49 mm
+  const COLUMN_GAP = CONTENT_WIDTH - LEFT_COLUMN_WIDTH - RIGHT_COLUMN_WIDTH; // 11 mm
+
+  const LEFT_COLUMN_X = CONTENT_LEFT; // 14 mm
+  const RIGHT_COLUMN_X = LEFT_COLUMN_X + LEFT_COLUMN_WIDTH + COLUMN_GAP; // 147 mm
+
+  // Header Background & Subtle Accent Border
+  const HEADER_HEIGHT = 36;
   doc.setFillColor(7, 16, 25);
-  doc.rect(0, 0, 210, 36, 'F');
+  doc.rect(0, 0, PAGE_WIDTH, HEADER_HEIGHT, 'F');
+  doc.setDrawColor(30, 41, 59);
+  doc.setLineWidth(0.4);
+  doc.line(0, HEADER_HEIGHT, PAGE_WIDTH, HEADER_HEIGHT);
 
-  // Title & Subtitle
-  doc.setTextColor(56, 189, 248);
+  // Large Logo (13.5mm icon size, upper-left of Page 1)
+  const LOGO_SIZE = 13.5;
+  const LOGO_X = CONTENT_LEFT;
+  const LOGO_Y = 8.5;
+  addReportHeaderLogoPage1(doc, LOGO_X, LOGO_Y, LOGO_SIZE);
+
+  // Left Column Title & Brand Zone (Independent boundary, strictly <= LEFT_COLUMN_WIDTH)
+  const textStartX = LOGO_X + LOGO_SIZE + 4; // 31.5 mm
+  const maxTitleWidth = (LEFT_COLUMN_X + LEFT_COLUMN_WIDTH) - textStartX; // 104.5 mm
+
+  // 1. VulnFusion Brand Wordmark
+  doc.setTextColor(0, 184, 255); // #00B8FF Cyan
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.text('VULNFUSION — EXECUTIVE INTELLIGENCE BRIEF', 14, 15);
+  doc.setFontSize(13);
+  doc.text('VULNFUSION', textStartX, 13.5);
 
-  doc.setTextColor(148, 163, 184);
+  // 2. Executive Report Title
+  doc.setTextColor(248, 250, 252); // #F8FAFC White/Slate
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10.5);
+  doc.text('EXECUTIVE INTELLIGENCE BRIEF', textStartX, 19.5);
+
+  // 3. Subtitle with wrapping protection
+  doc.setTextColor(148, 163, 184); // #94A3B8 Slate
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.text('Unified visibility across Qualys, Tenable, Rapid7 and Wiz · Deterministic Correlation Engine', 14, 22);
+  doc.setFontSize(7.5);
+  const subtitle = 'Unified visibility across Qualys, Tenable, Rapid7 and Wiz';
+  const splitSubtitle = doc.splitTextToSize(subtitle, maxTitleWidth);
+  doc.text(splitSubtitle, textStartX, 25);
+
+  // Right Column Metadata Zone (Independent boundary, right-aligned to CONTENT_RIGHT = 196)
+  // Block 1: Platform Status
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(148, 163, 184);
+  doc.text('PLATFORM STATUS', CONTENT_RIGHT, 11, { align: 'right' });
+
+  // Draw green status indicator dot and OPERATIONAL text (clean ASCII, no Unicode encoding issues)
+  const opText = 'OPERATIONAL';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  const opWidth = doc.getTextWidth(opText);
+  const dotX = CONTENT_RIGHT - opWidth - 2.8;
+
+  doc.setFillColor(52, 211, 153); // #34D399 Emerald
+  doc.circle(dotX, 14.7, 0.9, 'F');
 
   doc.setTextColor(52, 211, 153);
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  doc.text('● PLATFORM STATUS: OPERATIONAL', 145, 15);
+  doc.text(opText, CONTENT_RIGHT, 15.5, { align: 'right' });
 
-  doc.setTextColor(100, 116, 139);
+  // Block 2: Generated Timestamp
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(6);
+  doc.setTextColor(148, 163, 184);
+  doc.text('GENERATED', CONTENT_RIGHT, 22, { align: 'right' });
+
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.text(`Generated: ${new Date().toUTCString()}`, 145, 22);
+  doc.setFontSize(7.5);
+  doc.setTextColor(248, 250, 252);
+  doc.text(formatExecutiveTimestamp(), CONTENT_RIGHT, 26.5, { align: 'right' });
 
   // Executive KPI Summary Cards
   let currentY = 44;
@@ -468,9 +549,9 @@ export function exportExecutiveToPdf(
     headStyles: { fillColor: [30, 41, 59], textColor: [248, 250, 252], fontStyle: 'bold', fontSize: 9 },
     bodyStyles: { fontSize: 8.5, textColor: [30, 41, 59] },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 55 },
+      0: { fontStyle: 'bold', cellWidth: 50 },
       1: { fontStyle: 'bold', cellWidth: 35, textColor: [2, 132, 199] },
-      2: { cellWidth: 100 },
+      2: { cellWidth: 97 },
     },
     margin: { left: 14, right: 14 },
   });
@@ -501,12 +582,12 @@ export function exportExecutiveToPdf(
     headStyles: { fillColor: [217, 119, 6], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8.5 },
     bodyStyles: { fontSize: 8, textColor: [30, 41, 59] },
     columnStyles: {
-      0: { fontStyle: 'bold', cellWidth: 28 },
-      1: { fontStyle: 'bold', cellWidth: 35 },
-      2: { cellWidth: 30 },
-      3: { cellWidth: 22 },
-      4: { cellWidth: 28 },
-      5: { cellWidth: 47 },
+      0: { fontStyle: 'bold', cellWidth: 26 },
+      1: { fontStyle: 'bold', cellWidth: 32 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 20 },
+      4: { cellWidth: 26 },
+      5: { cellWidth: 50 },
     },
     margin: { left: 14, right: 14 },
   });
@@ -537,6 +618,15 @@ export function exportExecutiveToPdf(
     theme: 'striped',
     headStyles: { fillColor: [30, 41, 59], textColor: [248, 250, 252], fontStyle: 'bold', fontSize: 8 },
     bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59] },
+    columnStyles: {
+      0: { fontStyle: 'bold', cellWidth: 26 },
+      1: { fontStyle: 'bold', cellWidth: 32 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 16 },
+      4: { cellWidth: 14, halign: 'center' },
+      5: { cellWidth: 34 },
+      6: { cellWidth: 32 },
+    },
     margin: { left: 14, right: 14 },
   });
 
@@ -568,12 +658,70 @@ export function exportExecutiveToPdf(
       theme: 'grid',
       headStyles: { fillColor: [88, 28, 135], textColor: [255, 255, 255], fontStyle: 'bold', fontSize: 8 },
       bodyStyles: { fontSize: 7.5, textColor: [30, 41, 59] },
+      columnStyles: {
+        0: { cellWidth: 26, fontStyle: 'bold' },
+        1: { cellWidth: 24 },
+        2: { cellWidth: 16 },
+        3: { cellWidth: 38 },
+        4: { cellWidth: 52 },
+        5: { cellWidth: 26 },
+      },
       margin: { left: 14, right: 14 },
     });
   }
 
+  // Running headers and footers across all pages
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    // Page 2+ Running Header with VulnFusion Logo
+    if (i > 1) {
+      doc.setFillColor(7, 16, 25);
+      doc.rect(0, 0, 210, 14, 'F');
+      doc.setDrawColor(30, 41, 59);
+      doc.setLineWidth(0.3);
+      doc.line(0, 14, 210, 14);
+
+      addReportHeaderLogoPage2(doc, 14, 4, 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(0, 184, 255);
+      doc.text('VULNFUSION', 23, 8.5);
+      doc.setTextColor(148, 163, 184);
+      doc.setFont('helvetica', 'normal');
+      doc.text('· Executive Intelligence Brief', 45, 8.5);
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Page ${i} of ${totalPages}`, 196, 8.5, { align: 'right' });
+    }
+
+    // Running Footer on All Pages
+    doc.setFillColor(11, 20, 32);
+    doc.rect(0, 283, 210, 14, 'F');
+    doc.setDrawColor(30, 41, 59);
+    doc.setLineWidth(0.3);
+    doc.line(0, 283, 210, 283);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(148, 163, 184);
+    doc.text('VulnFusion Executive Briefing  •  100% Deterministic Rule Engine (Authoritative)', 14, 289);
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(6.5);
+    doc.setTextColor(248, 250, 252);
+    doc.text(`PAGE ${i} OF ${totalPages}`, 196, 289, { align: 'right' });
+  }
+
   const filename = `vulnfusion-executive-brief-${formatDateForFilename()}.pdf`;
-  doc.save(filename);
+  if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+    try {
+      doc.save(filename);
+    } catch (e) {
+      console.warn('doc.save bypassed in headless context:', e);
+    }
+  }
+  (exportExecutiveToPdf as any).lastDoc = doc;
   return filename;
 }
 
@@ -597,16 +745,19 @@ export function exportSingleAiInsightToPdf(insight: AIAnalystInsight): string {
   doc.setFillColor(7, 16, 25);
   doc.rect(0, 0, 210, 38, 'F');
 
-  // Title & Subtitle
+  // Page 1 Canonical VulnFusion Logo (9mm, aspect ratio preserved, clear spacing)
+  addReportHeaderLogoPage1(doc, 14, 11, 9);
+
+  // Title & Subtitle (Visually dominant, aligned to right of logo)
   doc.setTextColor(56, 189, 248);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(15);
-  doc.text('VULNFUSION', 14, 15);
+  doc.text('VULNFUSION', 27, 17);
 
   doc.setTextColor(255, 255, 255);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(11);
-  doc.text('AI ANALYST | EXECUTIVE INSIGHT BRIEF', 14, 23);
+  doc.text('AI ANALYST | EXECUTIVE INSIGHT BRIEF', 27, 25);
 
   // Authority Banner in Header
   doc.setTextColor(234, 179, 8);
@@ -894,6 +1045,33 @@ export function exportSingleAiInsightToPdf(insight: AIAnalystInsight): string {
   doc.setFontSize(7.5);
   doc.setTextColor(100, 116, 139);
   doc.text('Synthetic demonstration data only. Qualys, Tenable, Rapid7, and Wiz are source labels used for demonstration.', 14, currentY);
+
+  // Running headers and footers across all pages
+  const totalPages = (doc as any).internal.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    // Page 2+ Running Header with VulnFusion Logo
+    if (i > 1) {
+      doc.setFillColor(7, 16, 25);
+      doc.rect(0, 0, 210, 14, 'F');
+      addReportHeaderLogoPage2(doc, 14, 4, 6);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(56, 189, 248);
+      doc.text('VULNFUSION', 23, 8);
+      doc.setTextColor(148, 163, 184);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`· AI Analyst Brief (${insight.assetId})`, 44, 8);
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Page ${i} of ${totalPages}`, 175, 8);
+    }
+    // Running Footer
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(100, 116, 139);
+    doc.text(`VulnFusion AI Analyst  ·  Page ${i} of ${totalPages}  ·  Non-Authoritative Explanatory Intelligence`, 14, 292);
+  }
 
   const filename = `vulnfusion-ai-insight-${insight.assetId}-${formatDateForFilename()}.pdf`;
   doc.save(filename);

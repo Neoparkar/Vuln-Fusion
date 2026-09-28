@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { UnifiedTestItem, TestExecutionSnapshot } from './testCenterUtils';
+import { addReportHeaderLogoPt, addReportHeaderLogoPage2Pt, VULNFUSION_LOGO_SVG } from './reportBrandAssets';
 
 function formatDateForFilename(): string {
   const d = new Date();
@@ -128,21 +129,24 @@ export function exportTestSuiteToPdf(
   doc.setFillColor(16, 20, 26);
   doc.rect(0, 0, pageWidth, 85, 'F');
 
-  // Title
+  // Page 1 Canonical VulnFusion Logo (approx 9mm in pt = 26pt, aspect ratio preserved, clear spacing)
+  addReportHeaderLogoPt(doc, 40, 24, 26);
+
+  // Title (Visually dominant, aligned to right of logo)
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(18);
+  doc.setFontSize(17);
   doc.setTextColor(255, 255, 255);
-  doc.text('VULNFUSION TEST VALIDATION REPORT', 40, 42);
+  doc.text('VULNFUSION TEST VALIDATION REPORT', 74, 42);
 
   // Subtitle
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(148, 163, 184);
-  doc.text('Deterministic Engine Verification • Control-Plane Validation • Audit Integrity', 40, 58);
+  doc.text('Deterministic Engine Verification • Control-Plane Validation • Audit Integrity', 74, 58);
 
   doc.setFontSize(8);
   doc.setTextColor(59, 130, 246);
-  doc.text(`RUN ID: ${snapshot.runId}  |  SCOPE: ${scope.toUpperCase()}  |  ENVIRONMENT: PRODUCTION BUILD`, 40, 72);
+  doc.text(`RUN ID: ${snapshot.runId}  |  SCOPE: ${scope.toUpperCase()}  |  ENVIRONMENT: PRODUCTION BUILD`, 74, 72);
 
   // Execution Summary Table
   const passedCount = tests.filter(t => t.passed).length;
@@ -226,10 +230,27 @@ export function exportTestSuiteToPdf(
     }
   });
 
-  // Footer on all pages
+  // Running headers and footers across all pages
   const totalPages = doc.internal.pages.length - 1;
   for (let i = 1; i <= totalPages; i++) {
     doc.setPage(i);
+    // Page 2+ Running Header with VulnFusion Logo
+    if (i > 1) {
+      doc.setFillColor(16, 20, 26);
+      doc.rect(0, 0, pageWidth, 30, 'F');
+      addReportHeaderLogoPage2Pt(doc, 40, 7, 16);
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(59, 130, 246);
+      doc.text('VULNFUSION', 62, 19);
+      doc.setTextColor(148, 163, 184);
+      doc.setFont('helvetica', 'normal');
+      doc.text('· Test Validation Report', 118, 19);
+      doc.setFontSize(7.5);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Run: ${snapshot.runId}`, pageWidth - 180, 19);
+    }
+    // Footer
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     doc.setTextColor(148, 163, 184);
@@ -331,10 +352,13 @@ export function exportTestSuiteToHtml(
 <body>
   <div class="container">
     <div class="header">
-      <div>
-        <span class="badge badge-pass" style="margin-bottom: 8px;">VulnFusion Validation Suite</span>
-        <h1 style="font-size: 24px; font-weight: 800; margin-top: 4px;">Test Command Center Audit Report</h1>
-        <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Deterministic engine verification across normalization, correlation, security, and export pipelines.</p>
+      <div style="display: flex; align-items: flex-start; gap: 16px;">
+        <div style="margin-top: 2px;" aria-label="VulnFusion Logo">${VULNFUSION_LOGO_SVG}</div>
+        <div>
+          <span class="badge badge-pass" style="margin-bottom: 8px;">VulnFusion Validation Suite</span>
+          <h1 style="font-size: 24px; font-weight: 800; margin-top: 4px;">Test Command Center Audit Report</h1>
+          <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">Deterministic engine verification across normalization, correlation, security, and export pipelines.</p>
+        </div>
       </div>
       <div style="text-align: right;">
         <span class="badge badge-pass" style="font-size: 14px; padding: 6px 14px;">${passedCount} / ${tests.length} PASS (${passPercentage}%)</span>
@@ -524,13 +548,14 @@ export function exportSingleTest(
     const doc = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
     doc.setFillColor(16, 20, 26);
     doc.rect(0, 0, doc.internal.pageSize.getWidth(), 80, 'F');
+    addReportHeaderLogoPt(doc, 40, 24, 26);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(16);
     doc.setTextColor(255, 255, 255);
-    doc.text(`TEST VERIFICATION ARTIFACT: ${test.id}`, 40, 40);
+    doc.text(`TEST VERIFICATION ARTIFACT: ${test.id}`, 74, 40);
     doc.setFontSize(9);
     doc.setTextColor(148, 163, 184);
-    doc.text(`${test.name}  •  ${test.categoryLabel}`, 40, 58);
+    doc.text(`${test.name}  •  ${test.categoryLabel}`, 74, 58);
 
     autoTable(doc, {
       startY: 95,

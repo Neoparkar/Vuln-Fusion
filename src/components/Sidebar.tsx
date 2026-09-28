@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   VulnFusionBrandIcon,
   ExecutiveIntelligenceIcon,
@@ -6,12 +6,25 @@ import {
   AssetCorrelationIcon,
   FindingsIntelligenceIcon,
   DeterministicEvidenceIcon,
-  TestCommandCenterIcon,
+  ReportIntelligenceIcon,
+  AIAnalystSecurityIcon,
+  SecurityGovernanceIcon,
+  KnowledgeCenterIcon,
+  PlatformConfigurationIcon,
 } from './icons/VulnFusionIcons';
-import { Sparkles, Shield, ChevronLeft, ChevronRight } from 'lucide-react';
-import { useRBAC } from '../context/RBACContext';
 
-export type NavTabId = 'overview' | 'inventory' | 'correlation' | 'findings' | 'evidence' | 'tests' | 'admin';
+export type NavTabId =
+  | 'overview'
+  | 'correlation'
+  | 'inventory'
+  | 'findings'
+  | 'evidence'
+  | 'reports'
+  | 'ai-analyst'
+  | 'admin'
+  | 'help'
+  | 'settings'
+  | 'tests';
 
 interface SidebarProps {
   activeTab: NavTabId;
@@ -21,98 +34,223 @@ interface SidebarProps {
   onOpenAIAnalyst?: () => void;
 }
 
+interface NavSection {
+  title: string;
+  items: {
+    id: NavTabId;
+    label: string;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+    badge?: string;
+    badgeType?: 'warning' | 'neutral' | 'success';
+    onClick?: () => void;
+  }[];
+}
+
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   reviewCount,
-  totalTests = 118,
   onOpenAIAnalyst,
 }) => {
-  const [isPinned, setIsPinned] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem('vulnfusion_sidebar_pinned') === 'true';
-    } catch {
-      return false;
+  const [isHovered, setIsHovered] = useState<boolean>(false);
+  const [isFocused, setIsFocused] = useState<boolean>(false);
+  const leaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Derived expansion state from hover or keyboard focus
+  const isExpanded = isHovered || isFocused;
+
+  const handleMouseEnter = () => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
     }
-  });
-
-  const { isAdmin } = useRBAC();
-
-  const togglePinned = () => {
-    setIsPinned(prev => {
-      const next = !prev;
-      try {
-        localStorage.setItem('vulnfusion_sidebar_pinned', String(next));
-      } catch {
-        // LocalStorage fallback
-      }
-      return next;
-    });
+    setIsHovered(true);
   };
 
-  const workspaceItems = [
+  const handleMouseLeave = () => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+    }
+    // Deliberate ~130ms debounce to prevent accidental flicker during cursor movement
+    leaveTimerRef.current = setTimeout(() => {
+      setIsHovered(false);
+    }, 130);
+  };
+
+  const handleFocus = () => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+    setIsFocused(true);
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsFocused(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (leaveTimerRef.current) {
+        clearTimeout(leaveTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleTabClick = (id: NavTabId) => {
+    if (id === 'ai-analyst' && onOpenAIAnalyst) {
+      onOpenAIAnalyst();
+    }
+    setActiveTab(id);
+  };
+
+  // 4 Explicit Sidebar Sections
+  const navSections: NavSection[] = [
     {
-      id: 'overview' as const,
-      label: 'Overview',
-      icon: ExecutiveIntelligenceIcon,
+      title: 'MAIN',
+      items: [
+        {
+          id: 'overview',
+          label: 'Overview',
+          icon: ExecutiveIntelligenceIcon,
+        },
+        {
+          id: 'correlation',
+          label: 'Asset Correlation',
+          icon: AssetCorrelationIcon,
+          badge: reviewCount > 0 ? `${reviewCount}` : undefined,
+          badgeType: 'warning',
+        },
+        {
+          id: 'inventory',
+          label: 'Asset Inventory',
+          icon: AssetIntelligenceIcon,
+        },
+        {
+          id: 'findings',
+          label: 'Finding Correlation',
+          icon: FindingsIntelligenceIcon,
+        },
+        {
+          id: 'evidence',
+          label: 'Evidence Explorer',
+          icon: DeterministicEvidenceIcon,
+        },
+      ],
     },
     {
-      id: 'inventory' as const,
-      label: 'Asset Inventory',
-      icon: AssetIntelligenceIcon,
+      title: 'REPORTING',
+      items: [
+        {
+          id: 'reports',
+          label: 'Reports',
+          icon: ReportIntelligenceIcon,
+        },
+        {
+          id: 'ai-analyst',
+          label: 'AI Analyst',
+          icon: AIAnalystSecurityIcon,
+        },
+      ],
     },
     {
-      id: 'correlation' as const,
-      label: 'Asset Correlation',
-      icon: AssetCorrelationIcon,
-      badge: reviewCount > 0 ? `${reviewCount}` : undefined,
-      badgeType: 'warning' as const,
+      title: 'ADMINISTRATION',
+      items: [
+        {
+          id: 'admin',
+          label: 'Administration',
+          icon: SecurityGovernanceIcon,
+        },
+      ],
     },
     {
-      id: 'findings' as const,
-      label: 'Finding Correlation',
-      icon: FindingsIntelligenceIcon,
+      title: 'SYSTEM',
+      items: [
+        {
+          id: 'help',
+          label: 'Help',
+          icon: KnowledgeCenterIcon,
+        },
+        {
+          id: 'settings',
+          label: 'Settings',
+          icon: PlatformConfigurationIcon,
+        },
+      ],
     },
-    {
-      id: 'evidence' as const,
-      label: 'Evidence Explorer',
-      icon: DeterministicEvidenceIcon,
-    },
-    {
-      id: 'tests' as const,
-      label: 'Test Suite',
-      icon: TestCommandCenterIcon,
-      badge: `${totalTests}`,
-      badgeType: 'neutral' as const,
-    },
-    ...(isAdmin ? [{
-      id: 'admin' as const,
-      label: 'Administration',
-      icon: Shield,
-    }] : []),
   ];
+
+  // Precise timing curves: ~320ms on expansion with custom cubic bezier, ~280ms on collapse
+  const containerWidthStyle: React.CSSProperties = {
+    width: isExpanded ? '230px' : '68px',
+    transition: isExpanded
+      ? 'width 320ms cubic-bezier(0.22, 1, 0.36, 1)'
+      : 'width 280ms cubic-bezier(0.22, 1, 0.36, 1)',
+  };
+
+  // Text label reveal timing: stays hidden for initial 120ms then fades in over ~170ms
+  const labelStyle: React.CSSProperties = {
+    opacity: isExpanded ? 1 : 0,
+    transform: isExpanded ? 'translateX(0)' : 'translateX(-4px)',
+    maxWidth: isExpanded ? '135px' : '0px',
+    transition: isExpanded
+      ? 'opacity 170ms ease 120ms, transform 180ms ease 120ms, max-width 320ms cubic-bezier(0.22, 1, 0.36, 1)'
+      : 'opacity 110ms ease 0ms, transform 110ms ease 0ms, max-width 280ms cubic-bezier(0.22, 1, 0.36, 1)',
+  };
+
+  // Section title reveal timing
+  const sectionTitleStyle: React.CSSProperties = {
+    opacity: isExpanded ? 1 : 0,
+    transform: isExpanded ? 'translateX(0)' : 'translateX(-4px)',
+    transition: isExpanded
+      ? 'opacity 160ms ease 110ms, transform 160ms ease 110ms'
+      : 'opacity 90ms ease 0ms, transform 90ms ease 0ms',
+  };
+
+  // Brand wordmark reveal timing
+  const logoWordmarkStyle: React.CSSProperties = {
+    opacity: isExpanded ? 1 : 0,
+    transform: isExpanded ? 'translateX(0)' : 'translateX(-4px)',
+    maxWidth: isExpanded ? '150px' : '0px',
+    transition: isExpanded
+      ? 'opacity 190ms ease 100ms, transform 190ms ease 100ms, max-width 320ms cubic-bezier(0.22, 1, 0.36, 1)'
+      : 'opacity 110ms ease 0ms, transform 110ms ease 0ms, max-width 280ms cubic-bezier(0.22, 1, 0.36, 1)',
+  };
+
+  // Badge pill reveal timing
+  const badgeStyle: React.CSSProperties = {
+    opacity: isExpanded ? 1 : 0,
+    transform: isExpanded ? 'scale(1)' : 'scale(0.85)',
+    transition: isExpanded
+      ? 'opacity 170ms ease 130ms, transform 170ms ease 130ms'
+      : 'opacity 90ms ease 0ms, transform 90ms ease 0ms',
+  };
 
   return (
     <div
-      className={`hidden md:block shrink-0 relative z-30 transition-[width] duration-200 ease-in-out ${
-        isPinned ? 'w-[230px]' : 'w-[68px]'
-      }`}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      style={containerWidthStyle}
+      className="hidden md:block shrink-0 relative z-30"
     >
       <aside
         aria-label="VulnFusion Navigation Sidebar"
-        className={`sticky top-0 h-screen flex flex-col justify-between bg-[#071019] border-r border-[#1B3045] select-none z-30 transition-[width] duration-200 ease-in-out ${
-          isPinned ? 'w-[230px]' : 'w-[68px]'
-        }`}
+        style={containerWidthStyle}
+        className="sticky top-0 h-screen flex flex-col justify-between bg-[#071019] border-r border-[#1B3045] select-none z-30 overflow-hidden"
       >
         <div className="flex flex-col min-h-0 flex-1 overflow-y-auto overflow-x-hidden py-4">
           
-          {/* Brand Logo & Expand/Collapse Trigger */}
-          <div className="px-3 mb-5">
-            <div className="flex items-center justify-between">
+          {/* Brand Logo & Title Header */}
+          <div className="px-3 mb-4">
+            <div className="flex items-center">
               <button
                 type="button"
                 onClick={() => setActiveTab('overview')}
-                className="flex items-center px-0.5 py-1 rounded-xl group focus:outline-none transition-all cursor-pointer min-w-0"
+                className="flex items-center px-0.5 py-1 rounded-xl group focus:outline-none transition-all cursor-pointer min-w-0 min-h-[44px]"
                 title="VulnFusion Asset Intelligence — Overview"
                 aria-label="VulnFusion Asset Intelligence"
               >
@@ -121,10 +259,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 </div>
 
                 <div
-                  className={`text-left min-w-0 ml-3 overflow-hidden whitespace-nowrap transition-all duration-200 ${
-                    isPinned
-                      ? 'opacity-100 max-w-[130px] translate-x-0'
-                      : 'opacity-0 max-w-0 -translate-x-1 pointer-events-none'
+                  style={logoWordmarkStyle}
+                  className={`text-left min-w-0 ml-3 overflow-hidden whitespace-nowrap ${
+                    !isExpanded ? 'pointer-events-none' : ''
                   }`}
                 >
                   <span className="font-extrabold text-base tracking-tight text-[#F1F5F9] block leading-tight truncate">
@@ -138,162 +275,121 @@ export const Sidebar: React.FC<SidebarProps> = ({
             </div>
           </div>
 
-          <div className="px-3 mb-5">
-            <div className="h-5 flex items-center px-2 mb-2 relative overflow-hidden">
-              <div
-                className={`flex items-center transition-all duration-200 ${
-                  isPinned
-                    ? 'opacity-100 translate-x-0'
-                    : 'opacity-0 -translate-x-1 pointer-events-none'
-                }`}
-              >
-                <span className="text-[10px] font-mono text-[#718197] uppercase tracking-wider font-bold">
-                  Workspace
-                </span>
-              </div>
-              {!isPinned && (
-                <div className="w-full flex items-center justify-center">
-                  <div className="w-4 h-0.5 bg-[#1B3045] rounded-full" />
-                </div>
-              )}
-            </div>
-
-            <nav className="space-y-1.5" aria-label="Workspaces">
-              {workspaceItems.map((item) => {
-                const Icon = item.icon;
-                const isActive = activeTab === item.id;
-
-                return (
-                  <div key={item.id} className="relative group/tooltip">
-                    <button
-                      type="button"
-                      onClick={() => setActiveTab(item.id)}
-                      className={`w-full h-11 px-2.5 rounded-xl flex items-center gap-3 transition-all relative cursor-pointer ${
-                        isActive
-                          ? 'bg-[#122236] text-[#00B8FF] border border-[#00B8FF]/40 shadow-[0_2px_12px_rgba(0,184,255,0.15)] font-bold'
-                          : 'text-[#8B95A5] hover:text-slate-100 hover:bg-[#0E1724] border border-transparent font-medium'
-                      }`}
-                      aria-label={item.label}
-                    >
-                      <div className="w-6 h-6 shrink-0 flex items-center justify-center">
-                        <Icon size={20} className={isActive ? 'text-[#00B8FF]' : 'text-[#8B95A5] group-hover/tooltip:text-slate-200'} />
-                      </div>
-
-                      <span
-                        className={`text-xs whitespace-nowrap overflow-hidden text-left transition-all duration-200 tracking-wide ${
-                          isPinned
-                            ? 'opacity-100 max-w-[130px] translate-x-0'
-                            : 'opacity-0 max-w-0 -translate-x-2 pointer-events-none'
-                        }`}
-                      >
-                        {item.label}
-                      </span>
-
-                      {item.badge && (
-                        <span
-                          className={`absolute right-2 px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-full transition-all ${
-                            item.id === 'correlation'
-                              ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
-                              : 'bg-[#132236] text-slate-300 border border-[#1B3045]'
-                          } ${
-                            isPinned
-                              ? 'opacity-100 scale-100'
-                              : 'opacity-0 scale-90 pointer-events-none'
-                          }`}
-                        >
-                          {item.badge}
-                        </span>
-                      )}
-                    </button>
-
-                    {!isPinned && (
-                      <div className="absolute left-[74px] top-1/2 -translate-y-1/2 px-2.5 py-1 bg-[#090F17] text-slate-200 text-xs font-semibold rounded-lg shadow-xl border border-[#1B3045] opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap z-50">
-                        {item.label}
-                      </div>
-                    )}
+          {/* Sectioned Navigation Lists */}
+          <div className="space-y-4 px-3">
+            {navSections.map((section, sIndex) => (
+              <div key={section.title} className="space-y-1">
+                {/* Section Divider & Header Label */}
+                {sIndex > 0 && (
+                  <div className="pt-2 pb-1">
+                    <div className="border-t border-[#132236] mx-1" />
                   </div>
-                );
-              })}
-            </nav>
-          </div>
-
-        </div>
-
-        {/* Bottom Area: AI Analyst & Explicit Pin/Push Toggle */}
-        <div className="p-3 border-t border-[#1B3045] space-y-2">
-          {onOpenAIAnalyst && (
-            <div className="relative group/tooltip">
-              <button
-                type="button"
-                onClick={onOpenAIAnalyst}
-                className="w-full h-11 px-2.5 rounded-xl flex items-center gap-3 text-purple-300 bg-purple-950/20 hover:bg-purple-900/40 border border-purple-500/30 transition-all font-semibold cursor-pointer"
-                aria-label="Open AI Analyst Sidecar"
-              >
-                <div className="w-6 h-6 shrink-0 flex items-center justify-center">
-                  <Sparkles size={18} className="text-purple-400" />
-                </div>
-                <span
-                  className={`text-xs whitespace-nowrap overflow-hidden text-left transition-all duration-200 ${
-                    isPinned
-                      ? 'opacity-100 max-w-[130px] translate-x-0'
-                      : 'opacity-0 max-w-0 -translate-x-2 pointer-events-none'
-                  }`}
-                >
-                  AI Analyst
-                </span>
-              </button>
-              {!isPinned && (
-                <div className="absolute left-[74px] top-1/2 -translate-y-1/2 px-2.5 py-1 bg-[#090F17] text-slate-200 text-xs font-semibold rounded-lg shadow-xl border border-[#1B3045] opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap z-50">
-                  AI Analyst Sidecar
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Explicit Expand / Collapse Pin Control */}
-          <div className="relative group/tooltip">
-            <button
-              type="button"
-              onClick={togglePinned}
-              className={`w-full h-9 px-2 rounded-xl flex items-center transition-all cursor-pointer ${
-                isPinned
-                  ? 'justify-between text-[#8B95A5] hover:text-[#F1F5F9] hover:bg-[#0E1724] border border-[#1B3045]/60 bg-[#0A121D]'
-                  : 'justify-center text-[#8B95A5] hover:text-[#F1F5F9] hover:bg-[#0E1724] border border-transparent'
-              }`}
-              aria-label={isPinned ? 'Collapse navigation' : 'Expand navigation'}
-              title={isPinned ? 'Collapse navigation' : 'Expand navigation'}
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                {isPinned ? (
-                  <ChevronLeft size={16} className="text-[#8B95A5] shrink-0" />
-                ) : (
-                  <ChevronRight size={16} className="text-[#8B95A5] shrink-0" />
                 )}
-                <span
-                  className={`text-xs whitespace-nowrap overflow-hidden text-left transition-all duration-200 font-mono ${
-                    isPinned
-                      ? 'opacity-100 max-w-[110px] translate-x-0'
-                      : 'opacity-0 max-w-0 pointer-events-none'
-                  }`}
-                >
-                  Collapse
-                </span>
+
+                <div className="h-5 flex items-center px-2 mb-1 relative overflow-hidden">
+                  <div
+                    style={sectionTitleStyle}
+                    className={`flex items-center ${
+                      !isExpanded ? 'pointer-events-none' : ''
+                    }`}
+                  >
+                    <span className="text-[10px] font-mono text-[#718197] uppercase tracking-wider font-bold whitespace-nowrap">
+                      {section.title}
+                    </span>
+                  </div>
+                  {!isExpanded && (
+                    <div className="w-full flex items-center justify-center">
+                      <div className="w-4 h-0.5 bg-[#1B3045] rounded-full" />
+                    </div>
+                  )}
+                </div>
+
+                {/* Section Items */}
+                <nav className="space-y-1" aria-label={section.title}>
+                  {section.items.map((item) => {
+                    const Icon = item.icon;
+                    const isActive = activeTab === item.id;
+
+                    return (
+                      <div key={item.id} className="relative group/tooltip">
+                        <button
+                          type="button"
+                          onClick={() => handleTabClick(item.id)}
+                          className={`w-full h-11 px-2.5 rounded-xl flex items-center gap-3 transition-all relative cursor-pointer min-h-[44px] ${
+                            isActive
+                              ? 'bg-[#122236] text-[#00B8FF] border border-[#00B8FF]/40 shadow-[0_2px_12px_rgba(0,184,255,0.15)] font-bold'
+                              : 'text-[#8B95A5] hover:text-slate-100 hover:bg-[#0E1724] border border-transparent font-medium'
+                          }`}
+                          aria-label={item.label}
+                        >
+                          <div className="w-6 h-6 shrink-0 flex items-center justify-center relative">
+                            <Icon
+                              size={20}
+                              className={
+                                isActive
+                                  ? 'text-[#00B8FF]'
+                                  : 'text-[#8B95A5] group-hover/tooltip:text-slate-200'
+                              }
+                            />
+                            {/* Review badge dot in collapsed view */}
+                            {!isExpanded && item.badge && (
+                              <span
+                                className={`absolute -top-1 -right-1 px-1 min-w-[15px] h-3.5 text-[8px] leading-none flex items-center justify-center font-bold font-mono rounded-full transition-all ${
+                                  item.id === 'correlation'
+                                    ? 'bg-amber-500 text-[#071019] shadow-sm ring-1 ring-[#071019]'
+                                    : 'bg-[#1B3045] text-slate-200'
+                                }`}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </div>
+
+                          <span
+                            style={labelStyle}
+                            className={`text-xs whitespace-nowrap overflow-hidden text-left tracking-wide ${
+                              !isExpanded ? 'pointer-events-none' : ''
+                            }`}
+                          >
+                            {item.label}
+                          </span>
+
+                          {item.badge && isExpanded && (
+                            <span
+                              style={badgeStyle}
+                              className={`ml-auto px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-full shrink-0 ${
+                                item.id === 'correlation'
+                                  ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                                  : 'bg-[#132236] text-slate-300 border border-[#1B3045]'
+                              }`}
+                            >
+                              {item.badge}
+                            </span>
+                          )}
+                        </button>
+
+                        {/* Accessible hover tooltip only when collapsed */}
+                        {!isExpanded && (
+                          <div className="absolute left-[74px] top-1/2 -translate-y-1/2 px-2.5 py-1 bg-[#090F17] text-slate-200 text-xs font-semibold rounded-lg shadow-xl border border-[#1B3045] opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap z-50">
+                            {item.label}
+                            {item.badge && ` (${item.badge})`}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </nav>
               </div>
-              {isPinned && (
-                <span className="text-[10px] text-[#5F6875] font-mono shrink-0">
-                  [Pinned]
-                </span>
-              )}
-            </button>
-            {!isPinned && (
-              <div className="absolute left-[74px] top-1/2 -translate-y-1/2 px-2.5 py-1 bg-[#090F17] text-slate-200 text-xs font-semibold rounded-lg shadow-xl border border-[#1B3045] opacity-0 pointer-events-none group-hover/tooltip:opacity-100 transition-opacity whitespace-nowrap z-50">
-                Expand navigation
-              </div>
-            )}
+            ))}
           </div>
+
         </div>
 
+        {/* Clean bottom padding without manual toggle buttons */}
+        <div className="py-2" />
       </aside>
     </div>
   );
 };
+
+export default Sidebar;

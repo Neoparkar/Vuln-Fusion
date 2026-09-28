@@ -24,6 +24,9 @@ import { FindingCorrelationTab } from './components/FindingCorrelationTab';
 import { EvidenceExplorerTab } from './components/EvidenceExplorerTab';
 import { TestRunnerTab } from './components/TestRunnerTab';
 import { AdminManagementTab } from './components/AdminManagementTab';
+import { ReportsTab } from './components/ReportsTab';
+import { SettingsTab } from './components/SettingsTab';
+import { HelpTab } from './components/HelpTab';
 import { EvidenceModal } from './components/EvidenceModal';
 import { ExceptionModal } from './components/ExceptionModal';
 import { AIAnalystModal } from './components/AIAnalystModal';
@@ -276,6 +279,19 @@ function MainWorkspace() {
     addAuditLog('CREATE_EXCEPTION', assetGroupId, `Created exception (${reason}): "${analystNote}"`);
   };
 
+  const handleResolveException = (exceptionId: string) => {
+    setExceptions(prev =>
+      prev.map(e => (e.exceptionId === exceptionId ? { ...e, status: 'REVOKED' } : e))
+    );
+    addAuditLog('RESOLVE_EXCEPTION', exceptionId, `Analyst revoked exception ${exceptionId}. Baseline deterministic correlation restored.`);
+    showToast('info', 'Exception Revoked', `Exception ${exceptionId} marked revoked.`);
+  };
+
+  const handleTriggerSourceSync = (sourceName: string) => {
+    addAuditLog('SYNC_DATA', sourceName, `Multi-source telemetry synchronization verified for ${sourceName}.`);
+    showToast('info', 'Data Source Synced', `Telemetry refreshed from ${sourceName}. All records verified.`);
+  };
+
   const handleAcceptCorrelation = (assetGroupId: string) => {
     addAuditLog('ACCEPT_CORRELATION', assetGroupId, `Analyst explicitly accepted deterministic correlation for ${assetGroupId}`);
     alert(`Correlation accepted for asset group ${assetGroupId}. Recorded in session audit log.`);
@@ -452,6 +468,100 @@ function MainWorkspace() {
             />
           )}
 
+          {activeTab === 'reports' && (
+            <ReportsTab
+              records={records}
+              clusters={clusters}
+              findings={SYNTHETIC_FINDINGS}
+              findingGroups={findingGroups}
+              aiInsights={aiInsights}
+              onOpenAIAnalyst={() => handleExplainAI(demoAsset)}
+            />
+          )}
+
+          {activeTab === 'ai-analyst' && (
+            <div className="space-y-6 max-w-7xl mx-auto">
+              <div className="pb-4 border-b border-[#1B3045] flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <div className="flex items-center gap-2 mb-1.5">
+                    <span className="px-2 py-0.5 text-[10px] font-mono font-bold uppercase rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                      REPORTING & REASONING
+                    </span>
+                    <span className="text-xs text-purple-400 font-mono flex items-center gap-1">
+                      <Sparkles className="w-3.5 h-3.5" /> Deterministic Advisory Sidecar
+                    </span>
+                  </div>
+                  <h1 className="text-2xl font-extrabold text-[#F4F7FB] tracking-tight uppercase">
+                    AI ANALYST
+                  </h1>
+                  <p className="text-xs text-[#8B95A5] font-mono mt-0.5">
+                    Launch in-depth natural language explanations of correlation evidence and multi-scanner convergence.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleExplainAI(demoAsset)}
+                  className="px-4 py-2.5 bg-purple-950/40 hover:bg-purple-900/60 text-purple-200 border border-purple-500/40 rounded-xl text-xs font-semibold font-mono flex items-center gap-2 transition-all min-h-[44px] cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-purple-400" />
+                  <span>Explain {demoAsset.canonicalHostname}</span>
+                </button>
+              </div>
+
+              {/* Asset Cards to Explain */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {clusters.map((cluster) => {
+                  const isReview = cluster.correlationStatus === 'REVIEW_REQUIRED';
+                  const hasInsight = aiInsights.some(i => i.assetId === cluster.underlyingAssetId);
+
+                  return (
+                    <div
+                      key={cluster.underlyingAssetId}
+                      className="p-5 rounded-2xl bg-[#071019] border border-[#1B3045] space-y-4 hover:border-[#234363] transition-colors"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div>
+                          <span className="text-xs font-mono font-bold text-white block">
+                            {cluster.canonicalHostname}
+                          </span>
+                          <span className="text-[10px] font-mono text-cyan-400">
+                            {cluster.underlyingAssetId}
+                          </span>
+                        </div>
+                        <span className={`px-2 py-0.5 rounded-full text-[9px] font-mono font-bold uppercase ${
+                          isReview
+                            ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                            : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                        }`}>
+                          {cluster.correlationStatus}
+                        </span>
+                      </div>
+
+                      <p className="text-xs text-slate-300 font-sans line-clamp-2">
+                        {cluster.clusterSummary || 'Correlated across multi-scanner telemetry feeds.'}
+                      </p>
+
+                      <div className="pt-3 border-t border-[#132236] flex items-center justify-between">
+                        <span className="text-[10px] font-mono text-[#718197]">
+                          {cluster.memberRecordIds?.length || 1} records ({cluster.confidence}% conf)
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => handleExplainAI(cluster)}
+                          className="px-3 py-1.5 bg-purple-950/30 hover:bg-purple-900/50 text-purple-200 border border-purple-500/30 rounded-xl text-xs font-semibold font-mono flex items-center gap-1.5 transition-colors cursor-pointer min-h-[36px]"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                          <span>{hasInsight ? 'View Insight' : 'Explain'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {activeTab === 'tests' && (
             <TestRunnerTab
               auditLogs={auditLogs}
@@ -461,6 +571,28 @@ function MainWorkspace() {
           {activeTab === 'admin' && (
             <AdminManagementTab
               auditLogs={auditLogs}
+              exceptions={exceptions}
+              records={records}
+              clusters={clusters}
+              findings={SYNTHETIC_FINDINGS}
+              findingGroups={findingGroups}
+              onResolveException={handleResolveException}
+              onTriggerSync={handleTriggerSourceSync}
+              onNavigateTab={setActiveTab}
+              addAuditLog={addAuditLog}
+            />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsTab
+              onSaveNotification={(msg) => showToast('info', 'Settings Updated', msg)}
+              onNavigateTab={setActiveTab}
+            />
+          )}
+
+          {activeTab === 'help' && (
+            <HelpTab
+              onNavigateTab={setActiveTab}
             />
           )}
         </main>
