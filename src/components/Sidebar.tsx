@@ -11,6 +11,7 @@ import {
   SecurityGovernanceIcon,
   KnowledgeCenterIcon,
   PlatformConfigurationIcon,
+  TestCommandCenterIcon,
 } from './icons/VulnFusionIcons';
 
 export type NavTabId =
@@ -50,6 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   reviewCount,
+  totalTests = 118,
   onOpenAIAnalyst,
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -168,6 +170,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
     {
       title: 'SYSTEM',
       items: [
+        {
+          id: 'tests',
+          label: 'Test Suite',
+          icon: TestCommandCenterIcon,
+          badge: `${totalTests}`,
+        },
         {
           id: 'help',
           label: 'Help',
