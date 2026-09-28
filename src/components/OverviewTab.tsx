@@ -233,19 +233,19 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE ABOVE-THE-FOLD: PRIMARY KPIs & ATTENTION REQUIRED            */}
       {/* ========================================================================= */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-5">
         
         {/* LEFT COLUMN: Executive KPI Conversion (7 Cols) */}
-        <div className="lg:col-span-7 bg-[#0A1017] border border-[#162231] rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-7 bg-[#0A1017] border border-[#162231] rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm flex flex-col justify-between space-y-4">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#162231] pb-3">
             <div className="flex items-center gap-2">
               <ExecutiveIntelligenceIcon size={20} />
               <div>
-                <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wide">
+                <h2 className="text-xs sm:text-sm font-bold text-slate-100 uppercase tracking-wide">
                   Executive Telemetry Conversion
                 </h2>
-                <p className="text-[11px] text-[#94A3B8]">
+                <p className="text-[10px] sm:text-[11px] text-[#94A3B8]">
                   Deterministic pipeline converting fragmented scanner records into prioritized remediation packages
                 </p>
               </div>
@@ -257,69 +257,69 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
           </div>
 
           {/* 4 Conversion Cards (2x2 Grid) */}
-          <div className="grid grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
             
             {/* Card 1: Raw Records */}
-            <div className="bg-[#0F1722] border border-[#1A2636] rounded-xl p-3.5 space-y-1.5">
+            <div className="bg-[#0F1722] border border-[#1A2636] rounded-xl p-3 sm:p-3.5 space-y-1.5 min-w-0">
               <div className="flex items-center justify-between text-[#64748B]">
                 <SourceIntelligenceIcon size={18} />
                 <span className="text-[10px] font-mono uppercase tracking-wider text-[#64748B]">INGESTED</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-slate-100 font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-100 font-mono tabular-nums">
                 {stats.totalRecords}
               </div>
-              <div className="text-xs font-semibold text-slate-200">Raw Source Records</div>
+              <div className="text-xs font-semibold text-slate-200 truncate">Raw Source Records</div>
               <div className="text-[11px] text-[#8B95A5] pt-1 border-t border-[#162231]/80 flex justify-between items-center">
-                <span>4 Scanning Tools</span>
-                <span className="text-cyan-400 font-mono font-medium">100% Ingested</span>
+                <span className="truncate">4 Tools</span>
+                <span className="text-cyan-400 font-mono font-medium shrink-0">100%</span>
               </div>
             </div>
 
             {/* Card 2: Normalized Assets */}
-            <div className="bg-[#0F1722] border border-blue-500/30 rounded-xl p-3.5 space-y-1.5">
+            <div className="bg-[#0F1722] border border-blue-500/30 rounded-xl p-3 sm:p-3.5 space-y-1.5 min-w-0">
               <div className="flex items-center justify-between text-blue-400">
                 <AssetCorrelationIcon size={18} />
                 <span className="text-[10px] font-mono uppercase tracking-wider text-blue-400">NORMALIZED</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-blue-400 font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-blue-400 font-mono tabular-nums">
                 {stats.totalAssets}
               </div>
-              <div className="text-xs font-semibold text-slate-200">Underlying Asset Groups</div>
+              <div className="text-xs font-semibold text-slate-200 truncate">Underlying Assets</div>
               <div className="text-[11px] text-[#8B95A5] pt-1 border-t border-[#162231]/80 flex justify-between items-center">
-                <span>{stats.correlatedCount} Confirmed Correlated</span>
-                <span className="text-emerald-400 font-mono font-semibold">{(stats.totalRecords / stats.totalAssets).toFixed(1)}:1</span>
+                <span className="truncate">{stats.correlatedCount} Correlated</span>
+                <span className="text-emerald-400 font-mono font-semibold shrink-0">{(stats.totalRecords / stats.totalAssets).toFixed(1)}:1</span>
               </div>
             </div>
 
             {/* Card 3: Vulnerability Findings */}
-            <div className="bg-[#0F1722] border border-violet-500/30 rounded-xl p-3.5 space-y-1.5">
+            <div className="bg-[#0F1722] border border-violet-500/30 rounded-xl p-3 sm:p-3.5 space-y-1.5 min-w-0">
               <div className="flex items-center justify-between text-violet-400">
                 <FindingsIntelligenceIcon size={18} />
                 <span className="text-[10px] font-mono uppercase tracking-wider text-violet-400">FINDINGS</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-violet-400 font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-violet-400 font-mono tabular-nums">
                 {stats.totalFindings}
               </div>
-              <div className="text-xs font-semibold text-slate-200">Vulnerability Findings</div>
+              <div className="text-xs font-semibold text-slate-200 truncate">Vulnerabilities</div>
               <div className="text-[11px] text-[#8B95A5] pt-1 border-t border-[#162231]/80 flex justify-between items-center">
-                <span>Cross-Scanner CVE Detections</span>
-                <span className="text-violet-300 font-mono font-medium">Raw Telemetry</span>
+                <span className="truncate">Cross-Scanner</span>
+                <span className="text-violet-300 font-mono font-medium shrink-0">Raw</span>
               </div>
             </div>
 
             {/* Card 4: Potential Remediation Issues */}
-            <div className="bg-[#0F1722] border border-emerald-500/30 rounded-xl p-3.5 space-y-1.5">
+            <div className="bg-[#0F1722] border border-emerald-500/30 rounded-xl p-3 sm:p-3.5 space-y-1.5 min-w-0">
               <div className="flex items-center justify-between text-emerald-400">
                 <CheckCircle2 size={18} className="text-emerald-400" />
                 <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400">ACTIONABLE</span>
               </div>
-              <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-emerald-400 font-mono tabular-nums">
                 {stats.totalFindingGroups}
               </div>
-              <div className="text-xs font-semibold text-slate-200">Remediation Issues</div>
+              <div className="text-xs font-semibold text-slate-200 truncate">Remediation Issues</div>
               <div className="text-[11px] text-[#8B95A5] pt-1 border-t border-[#162231]/80 flex justify-between items-center">
-                <span>Consolidated Work Packages</span>
-                <span className="text-emerald-400 font-mono font-semibold">Zero Noise</span>
+                <span className="truncate">Consolidated</span>
+                <span className="text-emerald-400 font-mono font-semibold shrink-0">0 Noise</span>
               </div>
             </div>
 
@@ -328,23 +328,23 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         </div>
 
         {/* RIGHT COLUMN: ATTENTION REQUIRED (5 Cols) */}
-        <div className="lg:col-span-5 bg-[#0A1017] border border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
+        <div className="lg:col-span-5 bg-[#0A1017] border border-amber-500/30 rounded-2xl p-4 sm:p-5 lg:p-6 shadow-sm flex flex-col justify-between space-y-4">
           
           <div className="space-y-3">
             <div className="flex items-center justify-between border-b border-[#162231] pb-3">
               <div className="flex items-center gap-2">
                 <AttentionRadarIcon size={20} />
                 <div>
-                  <h2 className="text-sm font-bold text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
+                  <h2 className="text-xs sm:text-sm font-bold text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
                     <span>ATTENTION REQUIRED</span>
                   </h2>
-                  <p className="text-[11px] text-[#94A3B8]">
+                  <p className="text-[10px] sm:text-[11px] text-[#94A3B8]">
                     Deterministic attribute conflicts requiring human adjudication
                   </p>
                 </div>
               </div>
-              <span className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
-                {reviewRequiredAssets.length} Review Required
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
+                {reviewRequiredAssets.length} Review
               </span>
             </div>
 
@@ -415,7 +415,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
       {/* ========================================================================= */}
       {/* 2. EXECUTIVE STORY STRIP: Conversion & Noise Reduction Flow                */}
       {/* ========================================================================= */}
-      <div className="bg-[#0A1017] border border-[#162231] rounded-2xl p-5 space-y-4 shadow-sm">
+      <div className="bg-[#0A1017] border border-[#162231] rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
         
         {/* Story Strip Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#162231] pb-3">
@@ -425,92 +425,76 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
               Linear Telemetry Synthesis & Noise Elimination Story
             </span>
           </div>
-          <div className="flex items-center gap-4 text-xs text-[#94A3B8]">
+          <div className="flex items-center gap-2 sm:gap-4 text-[11px] sm:text-xs text-[#94A3B8] flex-wrap">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400" />
               <strong>{stats.noiseReductionPercent}% Noise Eliminated</strong>
             </span>
-            <span>·</span>
+            <span className="hidden sm:inline">·</span>
             <span className="font-mono text-slate-300">{stats.duplicateRecordsAvoided} Duplicate Records Avoided</span>
           </div>
         </div>
 
         {/* 4-Stage Progressive Conversion Flow */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
           
           {/* Stage 1: Ingestion */}
-          <div className="bg-[#0F1722] border border-[#1A2636] rounded-xl p-4 space-y-2 hover:border-[#2A3C52] transition">
+          <div className="bg-[#0F1722] border border-[#1A2636] rounded-xl p-3.5 sm:p-4 space-y-2 hover:border-[#2A3C52] transition">
             <div className="flex items-center justify-between text-[#64748B] text-[11px] font-bold uppercase">
               <span>Stage 1 · Ingestion</span>
               <SourceIntelligenceIcon size={22} />
             </div>
-            <div className="text-2xl font-extrabold text-slate-100">{stats.totalRecords}</div>
+            <div className="text-xl sm:text-2xl font-extrabold text-slate-100">{stats.totalRecords}</div>
             <div className="text-xs font-semibold text-[#94A3B8]">Raw Source Records</div>
             <div className="pt-2 border-t border-[#162231] text-[11px] text-[#64748B] flex justify-between">
               <span>4 Scanning Tools</span>
-              <span className="text-cyan-400 font-mono font-semibold">100% Ingested</span>
+              <span className="text-cyan-400 font-mono font-bold">100%</span>
             </div>
           </div>
 
-          {/* Stage 2: Correlation */}
-          <div className="bg-[#0F1722] border border-blue-500/30 rounded-xl p-4 space-y-2 hover:border-blue-500/50 transition">
+          {/* Stage 2: Synthesis */}
+          <div className="bg-[#0F1722] border border-blue-500/30 rounded-xl p-3.5 sm:p-4 space-y-2 hover:border-blue-500/60 transition">
             <div className="flex items-center justify-between text-blue-400 text-[11px] font-bold uppercase">
-              <span>Stage 2 · Correlation</span>
+              <span>Stage 2 · Synthesis</span>
               <AssetCorrelationIcon size={22} />
             </div>
-            <div className="flex items-baseline justify-between">
-              <div className="text-2xl font-extrabold text-blue-400">{stats.totalAssets}</div>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                {stats.correlatedCount} Confirmed
-              </span>
-            </div>
-            <div className="text-xs font-semibold text-[#94A3B8]">Normalized Asset Groups</div>
+            <div className="text-xl sm:text-2xl font-extrabold text-blue-400">{stats.totalAssets}</div>
+            <div className="text-xs font-semibold text-slate-200">Correlated Assets</div>
             <div className="pt-2 border-t border-[#162231] text-[11px] text-[#64748B] flex justify-between">
-              <span>Condensation: {(stats.totalRecords / stats.totalAssets).toFixed(1)}:1</span>
-              <span className="text-emerald-400 font-semibold">{stats.noiseReductionPercent}% Red.</span>
+              <span>Deterministic</span>
+              <span className="text-emerald-400 font-mono font-bold">{(stats.totalRecords / stats.totalAssets).toFixed(1)}:1 Ratio</span>
             </div>
           </div>
 
-          {/* Stage 3: Vulnerabilities */}
-          <div className="bg-[#0F1722] border border-violet-500/30 rounded-xl p-4 space-y-2 hover:border-violet-500/50 transition">
+          {/* Stage 3: Findings */}
+          <div className="bg-[#0F1722] border border-violet-500/30 rounded-xl p-3.5 sm:p-4 space-y-2 hover:border-violet-500/60 transition">
             <div className="flex items-center justify-between text-violet-400 text-[11px] font-bold uppercase">
-              <span>Stage 3 · Vulnerabilities</span>
+              <span>Stage 3 · Findings</span>
               <FindingsIntelligenceIcon size={22} />
             </div>
-            <div className="flex items-baseline justify-between">
-              <div className="text-2xl font-extrabold text-violet-400">{stats.totalFindingGroups}</div>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-violet-500/10 text-violet-300 border border-violet-500/20">
-                {stats.totalFindings} Findings
-              </span>
-            </div>
-            <div className="text-xs font-semibold text-[#94A3B8]">Potential Remediation Issues</div>
+            <div className="text-xl sm:text-2xl font-extrabold text-violet-400">{stats.totalFindings}</div>
+            <div className="text-xs font-semibold text-slate-200">CVE Detections</div>
             <div className="pt-2 border-t border-[#162231] text-[11px] text-[#64748B] flex justify-between">
-              <span>De-duplicated CVEs</span>
-              <span className="text-violet-300 font-semibold">Zero Noise</span>
+              <span>Cross-Scanner</span>
+              <span className="text-violet-300 font-mono font-bold">Consolidated</span>
             </div>
           </div>
 
-          {/* Stage 4: Uncertainty Queue */}
-          <div className="bg-[#0F1722] border border-amber-500/30 rounded-xl p-4 space-y-2 hover:border-amber-500/50 transition">
-            <div className="flex items-center justify-between text-amber-400 text-[11px] font-bold uppercase">
-              <span>Stage 4 · Attention Queue</span>
-              <AttentionRadarIcon size={22} />
+          {/* Stage 4: Action */}
+          <div className="bg-[#0F1722] border border-emerald-500/30 rounded-xl p-3.5 sm:p-4 space-y-2 hover:border-emerald-500/60 transition">
+            <div className="flex items-center justify-between text-emerald-400 text-[11px] font-bold uppercase">
+              <span>Stage 4 · Action</span>
+              <CheckCircle2 size={22} />
             </div>
-            <div className="flex items-baseline justify-between">
-              <div className="text-2xl font-extrabold text-amber-400">{stats.reviewCount}</div>
-              <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                Review Required
-              </span>
-            </div>
-            <div className="text-xs font-semibold text-[#94A3B8]">Conflicting Evidence</div>
+            <div className="text-xl sm:text-2xl font-extrabold text-emerald-400">{stats.totalFindingGroups}</div>
+            <div className="text-xs font-semibold text-slate-200">Remediation Issues</div>
             <div className="pt-2 border-t border-[#162231] text-[11px] text-[#64748B] flex justify-between">
-              <span>Analyst Action Needed</span>
-              <span className="text-amber-400 font-semibold">2 Assets</span>
+              <span>Prioritized</span>
+              <span className="text-emerald-400 font-mono font-bold">{stats.noiseReductionPercent}% Clean</span>
             </div>
           </div>
 
         </div>
-
       </div>
 
       {/* ========================================================================= */}

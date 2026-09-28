@@ -573,86 +573,86 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
     <div className="space-y-6 animate-fadeIn font-sans pb-12">
       
       {/* 1. Header Banner */}
-      <div className="bg-[#10141A] border border-[#1B2430] rounded-2xl p-6 sm:p-7 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <div className="bg-[#10141A] border border-[#1B2430] rounded-2xl p-4 sm:p-6 lg:p-7 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 lg:gap-6">
           <div className="space-y-1.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-[#3B82F6]/10 border border-[#3B82F6]/20 text-[#60A5FA] text-[11px] font-bold uppercase tracking-wider">
               <AssetIntelligenceIcon size={16} glow /> Non-Destructive Asset Inventory & Archive
             </div>
-            <h1 className="text-3xl lg:text-[32px] font-semibold text-[#F1F5F9] tracking-tight leading-tight">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-[#F1F5F9] tracking-tight leading-tight">
               Asset Inventory
             </h1>
-            <p className="text-base text-[#8B95A5] leading-relaxed">
+            <p className="text-xs sm:text-sm lg:text-base text-[#8B95A5] leading-relaxed">
               Unified cross-scanner visibility with non-destructive asset archiving and automatic reactivation upon re-observation.
             </p>
           </div>
 
           {/* 2. Executive Metrics (Compact Dynamic Cards) */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 shrink-0">
-            <div className="bg-[#151A21] border border-[#1B2430] p-3.5 rounded-xl space-y-1 min-w-[105px]">
+          <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5 sm:gap-3 shrink-0 w-full lg:w-auto">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-3.5 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-[#60A5FA]">
                 <AssetIntelligenceIcon size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase">ACTIVE</span>
               </div>
-              <div className="text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
                 {viewCounts.active}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Active Assets</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Active Assets</div>
             </div>
 
-            <div className="bg-[#151A21] border border-[#1B2430] p-3.5 rounded-xl space-y-1 min-w-[105px]">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-3.5 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-[#3B82F6]">
                 <SourceIntelligenceIcon size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase">INGESTED</span>
               </div>
-              <div className="text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
                 {sourceRecordsCount}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Source Records</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Source Records</div>
             </div>
 
-            <div className="bg-[#151A21] border border-[#1B2430] p-3.5 rounded-xl space-y-1 min-w-[105px]">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-3.5 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-amber-400">
                 <AlertTriangle size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase">ELIGIBLE</span>
               </div>
-              <div className="text-2xl font-semibold text-amber-400 font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-amber-400 font-mono tabular-nums">
                 {viewCounts.archiveEligible}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Archive Eligible</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Archive Eligible</div>
             </div>
 
-            <div className="bg-[#151A21] border border-[#1B2430] p-3.5 rounded-xl space-y-1 min-w-[105px]">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-3.5 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-slate-400">
                 <Archive size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase">ARCHIVED</span>
               </div>
-              <div className="text-2xl font-semibold text-slate-300 font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-slate-300 font-mono tabular-nums">
                 {viewCounts.archived}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Archived Assets</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Archived Assets</div>
             </div>
 
-            <div className="bg-[#151A21] border border-[#1B2430] p-3.5 rounded-xl space-y-1 min-w-[105px]">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-3.5 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-[#F59E0B]">
                 <UncertaintyRadarIcon size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase">REVIEW</span>
               </div>
-              <div className="text-2xl font-semibold text-[#F59E0B] font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-[#F59E0B] font-mono tabular-nums">
                 {reviewRequiredCount}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Review Required</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Review Required</div>
             </div>
 
-            <div className="bg-[#151A21] border border-[#1B2430] p-3.5 rounded-xl space-y-1 min-w-[105px]">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-3.5 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-[#10B981]">
                 <CloudInfrastructureIcon size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase">SOURCES</span>
               </div>
-              <div className="text-2xl font-semibold text-[#10B981] font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-[#10B981] font-mono tabular-nums">
                 {distinctSourceTools.length}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Source Tools</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Source Tools</div>
             </div>
           </div>
         </div>
@@ -869,7 +869,7 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
                 <div
                   role="dialog"
                   aria-label="Additional asset filters"
-                  className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-72 sm:w-80 bg-[#10141A] border border-[#263548] rounded-2xl shadow-2xl p-4 z-50 space-y-3.5 text-xs animate-fadeIn"
+                  className="absolute left-0 sm:left-auto sm:right-0 mt-2 w-[calc(100vw-32px)] max-w-xs sm:w-80 bg-[#10141A] border border-[#263548] rounded-2xl shadow-2xl p-4 z-50 space-y-3.5 text-xs animate-fadeIn"
                 >
                   <div className="flex items-center justify-between border-b border-[#1B2430] pb-2">
                     <span className="font-bold text-[#F1F5F9] text-xs">Secondary Filters</span>

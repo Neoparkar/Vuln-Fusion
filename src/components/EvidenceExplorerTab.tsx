@@ -137,68 +137,68 @@ export const EvidenceExplorerTab: React.FC<EvidenceExplorerTabProps> = ({
     <div className="space-y-6 animate-fadeIn font-sans pb-10">
       
       {/* 1. Page Header & Summary Metrics */}
-      <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl p-6 sm:p-7 space-y-5 shadow-sm">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5 border-b border-[#1A222D] pb-5">
+      <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl p-4 sm:p-6 lg:p-7 space-y-4 sm:space-y-5 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 sm:gap-5 border-b border-[#1A222D] pb-4 sm:pb-5">
           <div className="space-y-1.5 max-w-2xl">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold uppercase tracking-wider">
+            <div className="inline-flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[11px] sm:text-xs font-semibold uppercase tracking-wider">
               <SourceIntelligenceIcon size={16} glow /> Deterministic Telemetry Workspace
             </div>
-            <h1 className="text-3xl font-extrabold text-slate-100 tracking-tight">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-slate-100 tracking-tight">
               RAW TELEMETRY INSPECTOR
             </h1>
-            <p className="text-sm text-[#94A3B8]">
+            <p className="text-xs sm:text-sm text-[#94A3B8]">
               Inspect source scanner records before and after deterministic correlation.
             </p>
           </div>
 
           {/* Compact Summary Metrics */}
-          <div className="flex items-center gap-4 sm:gap-6 bg-[#151A21] border border-[#1E2631] px-5 py-3 rounded-xl shrink-0">
-            <div className="flex items-center gap-3">
-              <SourceIntelligenceIcon size={22} />
+          <div className="flex items-center gap-3 sm:gap-6 bg-[#151A21] border border-[#1E2631] px-3.5 sm:px-5 py-2.5 sm:py-3 rounded-xl shrink-0 justify-between sm:justify-start">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <SourceIntelligenceIcon size={20} />
               <div>
-                <div className="text-2xl font-extrabold text-slate-100 font-mono tabular-nums">
+                <div className="text-xl sm:text-2xl font-extrabold text-slate-100 font-mono tabular-nums">
                   {records.length}
                 </div>
-                <div className="text-xs text-[#94A3B8] font-medium">Source Records</div>
+                <div className="text-[10px] sm:text-xs text-[#94A3B8] font-medium truncate">Records</div>
               </div>
             </div>
-            <div className="w-px h-8 bg-[#26303E]" />
-            <div className="flex items-center gap-3">
-              <AssetIntelligenceIcon size={22} />
+            <div className="w-px h-6 sm:h-8 bg-[#26303E]" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <AssetIntelligenceIcon size={20} />
               <div>
-                <div className="text-2xl font-extrabold text-blue-400 font-mono tabular-nums">
+                <div className="text-xl sm:text-2xl font-extrabold text-blue-400 font-mono tabular-nums">
                   {clusters.length > 0 ? clusters.length : 8}
                 </div>
-                <div className="text-xs text-[#94A3B8] font-medium">Underlying Assets</div>
+                <div className="text-[10px] sm:text-xs text-[#94A3B8] font-medium truncate">Assets</div>
               </div>
             </div>
-            <div className="w-px h-8 bg-[#26303E]" />
-            <div className="flex items-center gap-3">
-              <CloudInfrastructureIcon size={22} />
+            <div className="w-px h-6 sm:h-8 bg-[#26303E]" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <CloudInfrastructureIcon size={20} />
               <div>
-                <div className="text-2xl font-extrabold text-slate-200 font-mono tabular-nums">
+                <div className="text-xl sm:text-2xl font-extrabold text-slate-200 font-mono tabular-nums">
                   {uniqueTools.length}
                 </div>
-                <div className="text-xs text-[#94A3B8] font-medium">Source Tools</div>
+                <div className="text-[10px] sm:text-xs text-[#94A3B8] font-medium truncate">Tools</div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Search & Tool Filters */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 sm:gap-4">
           <div className="relative w-full sm:w-88">
-            <Search className="absolute left-3.5 top-3 w-4 h-4 text-[#64748B]" />
+            <Search className="absolute left-3.5 top-2.5 w-4 h-4 text-[#64748B]" />
             <input
               type="text"
               placeholder="Search records..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#151A21] border border-[#1E2631] rounded-xl pl-10 pr-3.5 py-2 text-sm text-slate-200 placeholder-[#64748B] focus:outline-none focus:border-blue-500/50 font-sans"
+              className="w-full bg-[#151A21] border border-[#1E2631] rounded-xl pl-10 pr-3.5 py-2 text-xs sm:text-sm text-slate-200 placeholder-[#64748B] focus:outline-none focus:border-blue-500/50 font-sans"
             />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-[#151A21] p-1.5 rounded-xl border border-[#1E2631] w-full sm:w-auto overflow-x-auto">
+          <div className="flex items-center gap-1.5 bg-[#151A21] p-1.5 rounded-xl border border-[#1E2631] w-full sm:w-auto overflow-x-auto no-scrollbar">
             {(['ALL', 'QUALYS', 'TENABLE', 'RAPID7', 'WIZ'] as const).map(tool => {
               const isSelected = selectedTool === tool;
               return (

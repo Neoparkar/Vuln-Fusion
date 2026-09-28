@@ -135,35 +135,36 @@ export const ExportReportModal: React.FC<ExportReportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fadeIn font-sans">
-      <div className="relative w-full max-w-2xl bg-[#0E1217] border border-[#1E2631] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/70 backdrop-blur-md animate-fadeIn font-sans">
+      <div className="relative w-full max-w-2xl bg-[#0E1217] border border-[#1E2631] rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh]">
         
         {/* Modal Header */}
-        <div className="p-6 border-b border-[#1A222D] bg-[#12171F] flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-              <Download className="w-5 h-5" />
+        <div className="p-4 sm:p-6 border-b border-[#1A222D] bg-[#12171F] flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+              <Download className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h3 className="text-lg font-bold text-slate-100">
+            <div className="min-w-0">
+              <h3 className="text-sm sm:text-base lg:text-lg font-bold text-slate-100 truncate">
                 Export Validation Report
               </h3>
-              <p className="text-xs text-[#94A3B8]">
-                Generate certified deterministic test execution artifacts across multiple formats.
+              <p className="text-[11px] sm:text-xs text-[#94A3B8] truncate">
+                Certified deterministic test execution artifacts across formats
               </p>
             </div>
           </div>
 
           <button
             onClick={onClose}
-            className="p-2 rounded-xl bg-[#18202C] hover:bg-[#222C3D] text-[#94A3B8] hover:text-white border border-[#242F3D] transition"
+            className="p-1.5 sm:p-2 rounded-xl bg-[#18202C] hover:bg-[#222C3D] text-[#94A3B8] hover:text-white border border-[#242F3D] transition shrink-0 ml-2 cursor-pointer"
+            aria-label="Close"
           >
-            <X className="w-4 h-4" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-6 overflow-y-auto flex-1 text-sm">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-6 overflow-y-auto flex-1 text-sm">
           
           {/* 1. Scope Selection */}
           <div className="space-y-2.5">

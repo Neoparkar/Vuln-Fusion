@@ -141,43 +141,43 @@ export const ExecutiveExportModal: React.FC<ExecutiveExportModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-[#0D131D] border border-[#1E293B] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-[#0D131D] border border-[#1E293B] rounded-2xl w-full max-w-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90dvh]">
         
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1E293B] bg-[#0A0F17]">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#0B1522] border border-[#2563A6]/40 flex items-center justify-center shadow-sm shrink-0">
-              <VulnFusionBrandIcon size={26} glow={false} />
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-[#1E293B] bg-[#0A0F17]">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#0B1522] border border-[#2563A6]/40 flex items-center justify-center shadow-sm shrink-0">
+              <VulnFusionBrandIcon size={24} glow={false} />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base font-bold text-[#F1F5F9] tracking-tight">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-bold text-[#F1F5F9] tracking-tight truncate">
                   Vuln<span className="text-[#9CC3E6]">Fusion</span> Executive Export
                 </h2>
-                <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-[#102A43] text-[#5FA8D3] border border-[#2563A6]/30">
+                <span className="px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-mono font-bold bg-[#102A43] text-[#5FA8D3] border border-[#2563A6]/30 shrink-0">
                   Asset Intelligence
                 </span>
               </div>
-              <p className="text-xs text-[#94A3B8]">
-                Generate an authoritative, multi-format executive intelligence snapshot
+              <p className="text-[11px] sm:text-xs text-[#94A3B8] truncate">
+                Authoritative multi-format executive intelligence snapshot
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-[#64748B] hover:text-slate-200 hover:bg-[#151D2A] rounded-lg transition"
+            className="p-1.5 text-[#64748B] hover:text-slate-200 hover:bg-[#151D2A] rounded-lg transition shrink-0 ml-2 cursor-pointer"
             aria-label="Close"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Modal Body */}
-        <div className="p-6 space-y-5 overflow-y-auto">
+        <div className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
           
           {/* Executive Summary Metrics Strip */}
-          <div className="p-4 bg-[#080C12] border border-[#1E293B] rounded-xl grid grid-cols-4 gap-3 text-center">
+          <div className="p-3 sm:p-4 bg-[#080C12] border border-[#1E293B] rounded-xl grid grid-cols-4 gap-2 sm:gap-3 text-center">
             <div>
               <span className="text-[11px] font-bold text-[#64748B] uppercase block">Assets</span>
               <span className="text-lg font-extrabold text-blue-400">{stats.totalAssets}</span>

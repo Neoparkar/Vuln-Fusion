@@ -325,7 +325,7 @@ function MainWorkspace() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-[#070B10] text-[#E8EEF5] flex flex-col justify-center items-center p-6 space-y-4 select-none">
+      <div className="min-h-[100dvh] bg-[#070B10] text-[#E8EEF5] flex flex-col justify-center items-center p-4 sm:p-6 space-y-4 select-none">
         <Loader2 className="w-8 h-8 animate-spin text-[#00B8FF]" />
         <p className="text-sm font-mono text-[#8A99AF]">Loading secure workspace...</p>
       </div>
@@ -337,7 +337,7 @@ function MainWorkspace() {
   }
 
   return (
-    <div className="min-h-screen bg-[#090B0F] text-[#F1F5F9] font-sans flex flex-col md:flex-row antialiased selection:bg-[#3B82F6]/30 selection:text-white relative">
+    <div className="min-h-[100dvh] bg-[#090B0F] text-[#F1F5F9] font-sans flex flex-col md:flex-row antialiased selection:bg-[#3B82F6]/30 selection:text-white relative">
       
       {/* 1. Persistent Left Sidebar */}
       <Sidebar
@@ -349,7 +349,7 @@ function MainWorkspace() {
       />
 
       {/* 2. Main Content Viewport & Header Column */}
-      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+      <div className="flex-1 flex flex-col min-w-0 min-h-[100dvh]">
         
         {/* Top Header */}
         <TopHeader
@@ -367,8 +367,8 @@ function MainWorkspace() {
 
         {/* Floating Interactive Toast Notification */}
         {toastNotification && (
-          <div className="fixed top-20 right-6 z-50 max-w-md w-full animate-bounceIn shadow-2xl">
-            <div className={`p-4 rounded-2xl border backdrop-blur-md flex items-start gap-3 shadow-2xl ${
+          <div className="fixed top-16 sm:top-20 right-3 sm:right-6 z-50 max-w-md w-[calc(100vw-24px)] sm:w-full animate-bounceIn shadow-2xl">
+            <div className={`p-3.5 sm:p-4 rounded-2xl border backdrop-blur-md flex items-start gap-3 shadow-2xl ${
               toastNotification.type === 'reactivate'
                 ? 'bg-[#00B8FF]/15 border-[#00B8FF] text-white shadow-[0_0_30px_rgba(0,184,255,0.3)]'
                 : toastNotification.type === 'archive'
@@ -400,7 +400,7 @@ function MainWorkspace() {
         )}
 
         {/* Main Workspace Render */}
-        <main className="flex-1 p-4 sm:p-6 max-w-[1600px] w-full mx-auto space-y-6">
+        <main className="flex-1 p-3 sm:p-5 lg:p-6 max-w-[1600px] w-full mx-auto space-y-4 sm:space-y-6">
           {activeTab === 'overview' && (
             <OverviewTab
               records={records}

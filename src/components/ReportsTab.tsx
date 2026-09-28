@@ -157,7 +157,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
         {reportPacks.map((pack) => (
           <div
             key={pack.id}
-            className="bg-[#071019] border border-[#1B3045] rounded-2xl p-6 flex flex-col justify-between space-y-5 hover:border-[#234363] transition-colors shadow-xl"
+            className="bg-[#071019] border border-[#1B3045] rounded-2xl p-4 sm:p-6 flex flex-col justify-between space-y-4 sm:space-y-5 hover:border-[#234363] transition-colors shadow-xl"
           >
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-2">
@@ -167,7 +167,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
                 <span className="text-[11px] text-[#718197] font-mono uppercase">{pack.category}</span>
               </div>
 
-              <h2 className="text-lg font-bold text-white tracking-tight">
+              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
                 {pack.title}
               </h2>
 
@@ -185,8 +185,8 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
               </div>
             </div>
 
-            <div className="pt-3 border-t border-[#132236] flex items-center justify-between gap-3">
-              <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#8B95A5]">
+            <div className="pt-3 border-t border-[#132236] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#8B95A5] flex-wrap">
                 <span>FORMATS:</span>
                 {pack.formats.map((fmt) => (
                   <span key={fmt} className="px-1.5 py-0.5 rounded bg-[#0B1522] border border-[#1B3045] text-cyan-300 font-semibold">
@@ -198,7 +198,7 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
               <button
                 type="button"
                 onClick={pack.primaryAction}
-                className="px-4 py-2 bg-[#122236] hover:bg-[#1A3352] text-[#00B8FF] border border-[#00B8FF]/40 rounded-xl text-xs font-semibold font-mono flex items-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
+                className="w-full sm:w-auto px-4 py-2 bg-[#122236] hover:bg-[#1A3352] text-[#00B8FF] border border-[#00B8FF]/40 rounded-xl text-xs font-semibold font-mono flex items-center justify-center gap-1.5 transition-colors cursor-pointer min-h-[44px]"
               >
                 <span>{pack.actionLabel}</span>
                 <ArrowRight className="w-3.5 h-3.5" />

@@ -255,70 +255,70 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
       )}
       
       {/* 1. Page Header & Dynamic Top Metrics */}
-      <div className="bg-[#10141A] border border-[#1B2430] rounded-2xl p-6 sm:p-7 shadow-sm">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+      <div className="bg-[#10141A] border border-[#1B2430] rounded-2xl p-4 sm:p-6 lg:p-7 shadow-sm">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-5 lg:gap-6">
           
           {/* Header Title & Eyebrow */}
           <div className="space-y-1.5 max-w-2xl">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-md bg-[#3B82F6]/10 border border-[#3B82F6]/20 text-[#60A5FA] text-[11px] font-bold uppercase tracking-wider">
               <AssetCorrelationIcon size={16} glow /> Authoritative Asset Intelligence
             </div>
-            <h1 className="text-3xl lg:text-[32px] font-semibold text-[#F1F5F9] tracking-tight leading-tight">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-semibold text-[#F1F5F9] tracking-tight leading-tight">
               Deterministic Asset Correlation
             </h1>
-            <p className="text-base text-[#8B95A5] leading-relaxed">
+            <p className="text-xs sm:text-sm lg:text-base text-[#8B95A5] leading-relaxed">
               Correlating disparate scanning tool records into evidence-supported asset hypotheses.
             </p>
           </div>
 
           {/* 4 Dynamic Metric Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3.5 shrink-0">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3.5 shrink-0 w-full lg:w-auto">
             {/* Asset Groups Card */}
-            <div className="bg-[#151A21] border border-[#1B2430] p-4 rounded-xl space-y-1 min-w-[125px]">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-4 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-[#60A5FA]">
                 <AssetIntelligenceIcon size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase tracking-wider">GROUPS</span>
               </div>
-              <div className="text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
                 {countAll}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Asset Groups</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Asset Groups</div>
             </div>
 
             {/* Source Records Card */}
-            <div className="bg-[#151A21] border border-[#1B2430] p-4 rounded-xl space-y-1 min-w-[125px]">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-4 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-[#3B82F6]">
                 <SourceIntelligenceIcon size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase tracking-wider">INGESTED</span>
               </div>
-              <div className="text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
                 {records.length}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Source Records</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Source Records</div>
             </div>
 
             {/* Vulnerability Findings Card */}
-            <div className="bg-[#151A21] border border-[#1B2430] p-4 rounded-xl space-y-1 min-w-[125px]">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-4 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-[#A855F7]">
                 <RiskExposureIcon size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase tracking-wider">FINDINGS</span>
               </div>
-              <div className="text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
                 {findings.length}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Vulnerabilities</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Vulnerabilities</div>
             </div>
 
             {/* Potential Remediation Issues Card */}
-            <div className="bg-[#151A21] border border-[#1B2430] p-4 rounded-xl space-y-1 min-w-[125px]">
+            <div className="bg-[#151A21] border border-[#1B2430] p-3 sm:p-4 rounded-xl space-y-1 min-w-0 w-full">
               <div className="flex items-center justify-between text-[#10B981]">
                 <FindingsIntelligenceIcon size={18} />
                 <span className="text-[10px] font-mono text-[#5F6875] uppercase tracking-wider">ISSUES</span>
               </div>
-              <div className="text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
+              <div className="text-xl sm:text-2xl font-semibold text-[#F1F5F9] font-mono tabular-nums">
                 {findingGroups.length}
               </div>
-              <div className="text-xs text-[#8B95A5] font-medium">Correlation Issues</div>
+              <div className="text-[11px] sm:text-xs text-[#8B95A5] font-medium truncate">Correlation Issues</div>
             </div>
           </div>
 

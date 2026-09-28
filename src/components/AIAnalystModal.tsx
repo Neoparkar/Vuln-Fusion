@@ -167,37 +167,37 @@ export const AIAnalystModal: React.FC<AIAnalystModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto animate-fadeIn">
-      <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden font-sans text-slate-100 my-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-2.5 sm:p-4 md:p-6 overflow-y-auto animate-fadeIn">
+      <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl w-full max-w-4xl max-h-[90dvh] flex flex-col shadow-2xl overflow-hidden font-sans text-slate-100 my-auto">
         
         {/* Modal Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#1A222D] bg-[#10141A] shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
-              <Sparkles className="w-5 h-5" />
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-[#1A222D] bg-[#10141A] shrink-0">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="p-2 sm:p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <div className="text-xs uppercase font-bold text-purple-400 tracking-wider flex items-center gap-2">
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-xs uppercase font-bold text-purple-400 tracking-wider flex items-center gap-1.5 sm:gap-2 truncate">
                 <span>AI ANALYST</span>
                 <span className="text-slate-600">•</span>
                 <span>Explanation Sidecar</span>
               </div>
-              <h3 className="text-lg font-bold text-slate-100 mt-0.5">
-                {canonicalHostname} <span className="text-slate-400 font-mono text-sm">({underlyingAssetId})</span>
+              <h3 className="text-sm sm:text-base lg:text-lg font-bold text-slate-100 mt-0.5 truncate">
+                {canonicalHostname} <span className="text-slate-400 font-mono text-xs sm:text-sm">({underlyingAssetId})</span>
               </h3>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#151A21] transition"
+            className="p-1.5 sm:p-2 rounded-xl text-[#94A3B8] hover:text-white hover:bg-[#151A21] transition shrink-0 ml-2 cursor-pointer"
             aria-label="Close modal"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
         {/* Modal Scrollable Content Area */}
-        <div className="p-6 sm:p-7 overflow-y-auto space-y-6 flex-1">
+        <div className="p-4 sm:p-6 lg:p-7 overflow-y-auto space-y-4 sm:space-y-6 flex-1">
           
           {/* SECTION A: AUTHORITATIVE RESULT (Always visible regardless of Gemini status) */}
           <div className="bg-[#151A21] border border-[#1E2631] rounded-2xl p-5 space-y-4">
