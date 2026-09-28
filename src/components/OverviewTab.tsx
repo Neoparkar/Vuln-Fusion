@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { UnderlyingAsset, AssetRecord, VulnerabilityFinding, FindingCorrelationGroup } from '../types/vulnfusion';
+import React, { useState, useMemo } from 'react';
+import { UnderlyingAsset, AssetRecord, VulnerabilityFinding, FindingCorrelationGroup, AIAnalystInsight } from '../types/vulnfusion';
 import { calculateExecutiveStats } from '../utils/executiveReportExport';
 import { ExecutiveExportModal } from './ExecutiveExportModal';
 import {
@@ -27,6 +27,8 @@ import {
   X,
   Eye,
   Sliders,
+  AlertTriangle,
+  ShieldAlert,
 } from 'lucide-react';
 
 interface OverviewTabProps {
@@ -36,7 +38,9 @@ interface OverviewTabProps {
   findingGroups: FindingCorrelationGroup[];
   onNavigateTab: (tab: 'overview' | 'inventory' | 'correlation' | 'findings' | 'evidence' | 'tests') => void;
   onOpenAIAnalyst?: () => void;
+  onInvestigateReviewRequired?: (assetGroupId?: string) => void;
   externalSearchQuery?: string;
+  aiInsights?: AIAnalystInsight[];
 }
 
 export const OverviewTab: React.FC<OverviewTabProps> = ({
@@ -46,7 +50,9 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   findingGroups,
   onNavigateTab,
   onOpenAIAnalyst,
+  onInvestigateReviewRequired,
   externalSearchQuery = '',
+  aiInsights = [],
 }) => {
   // State
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
@@ -58,6 +64,20 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
   const [searchQuery, setSearchQuery] = useState(externalSearchQuery);
 
   const stats = calculateExecutiveStats(records, clusters, findings, findingGroups);
+
+  // Dynamically derived review-required assets
+  const reviewRequiredAssets = useMemo(() => {
+    return clusters.filter(c => c.correlationStatus === 'REVIEW_REQUIRED');
+  }, [clusters]);
+
+  const handleInvestigateReview = (assetGroupId?: string) => {
+    const targetId = assetGroupId || reviewRequiredAssets[0]?.underlyingAssetId;
+    if (onInvestigateReviewRequired) {
+      onInvestigateReviewRequired(targetId);
+    } else {
+      onNavigateTab('correlation');
+    }
+  };
 
   // Filtered Assets for Attention / Inventory Radar
   const filteredAssets = clusters.filter(cluster => {
@@ -102,7 +122,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
     <div className="space-y-6 animate-fadeIn font-sans pb-12">
       
       {/* ========================================================================= */}
-      {/* 1. HERO AREA: Executive Intelligence Header (120-150px Target)           */}
+      {/* 1. HERO AREA: Executive Intelligence Header                               */}
       {/* ========================================================================= */}
       <div className="bg-[#0A1017] border border-[#162231] rounded-2xl p-5 sm:p-6 shadow-md relative overflow-hidden">
         {/* Subtle background ambient indicator */}
@@ -120,12 +140,12 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
               Asset Intelligence & Correlation
             </h1>
             <p className="text-xs sm:text-sm text-[#94A3B8] leading-relaxed">
-              Unified cross-telemetry visibility across <strong>Qualys</strong>, <strong>Tenable</strong>, <strong>Rapid7</strong>, and <strong>Wiz</strong>. Deterministic hypothesis resolution with zero AI hallucination.
+              Unified vulnerability & asset intelligence across <strong>Qualys</strong>, <strong>Tenable</strong>, <strong>Rapid7</strong>, and <strong>Wiz</strong>. Deterministic hypothesis resolution with zero AI hallucination.
             </p>
           </div>
 
           {/* Right Status & Executive Actions */}
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 shrink-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2.5 shrink-0 flex-wrap">
             
             {/* System Status Tile */}
             <div className="bg-[#0F1722] border border-[#1E2C3D] px-3.5 py-2 rounded-xl flex items-center gap-3">
@@ -145,19 +165,44 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
 
             {/* Actions */}
             <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+              {reviewRequiredAssets.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => handleInvestigateReview()}
+                  className="px-3.5 py-2.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-1.5 shadow-md shadow-amber-500/10 cursor-pointer"
+                  title="Directly inspect assets with conflicting deterministic telemetry"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
+                  <span>Investigate Review ({reviewRequiredAssets.length}) →</span>
+                </button>
+              )}
+
+              {onOpenAIAnalyst && (
+                <button
+                  type="button"
+                  onClick={onOpenAIAnalyst}
+                  className="px-3.5 py-2.5 bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 text-purple-200 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
+                >
+                  <Sparkles className="w-3.5 h-3.5 text-purple-400" />
+                  <span>Ask AI Analyst</span>
+                </button>
+              )}
+
               <button
+                type="button"
                 onClick={handleRunIntelligenceCheck}
                 disabled={isRunningCheck}
-                className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-[#141E2B] hover:bg-[#1B293A] border border-[#233549] text-slate-200 hover:text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
+                className="px-3.5 py-2.5 bg-[#141E2B] hover:bg-[#1B293A] border border-[#233549] text-slate-200 hover:text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50 cursor-pointer"
                 title="Execute full deterministic validation across all ingested telemetry"
               >
                 <RefreshCw className={`w-3.5 h-3.5 text-sky-400 ${isRunningCheck ? 'animate-spin' : ''}`} />
-                <span>{isRunningCheck ? 'Validating...' : 'Run Intelligence Check'}</span>
+                <span>{isRunningCheck ? 'Validating...' : 'Validate'}</span>
               </button>
 
               <button
+                type="button"
                 onClick={() => setIsExportModalOpen(true)}
-                className="flex-1 sm:flex-initial px-3.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm"
+                className="px-3.5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 <span>Export Brief</span>
@@ -183,6 +228,188 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
             </button>
           </div>
         )}
+      </div>
+
+      {/* ========================================================================= */}
+      {/* 2. EXECUTIVE ABOVE-THE-FOLD: PRIMARY KPIs & ATTENTION REQUIRED            */}
+      {/* ========================================================================= */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        
+        {/* LEFT COLUMN: Executive KPI Conversion (7 Cols) */}
+        <div className="lg:col-span-7 bg-[#0A1017] border border-[#162231] rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
+          
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-[#162231] pb-3">
+            <div className="flex items-center gap-2">
+              <ExecutiveIntelligenceIcon size={20} />
+              <div>
+                <h2 className="text-sm font-bold text-slate-100 uppercase tracking-wide">
+                  Executive Telemetry Conversion
+                </h2>
+                <p className="text-[11px] text-[#94A3B8]">
+                  Deterministic pipeline converting fragmented scanner records into prioritized remediation packages
+                </p>
+              </div>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-mono font-bold shrink-0 self-start sm:self-auto">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <span>{stats.noiseReductionPercent}% Noise Eliminated</span>
+            </div>
+          </div>
+
+          {/* 4 Conversion Cards (2x2 Grid) */}
+          <div className="grid grid-cols-2 gap-3.5">
+            
+            {/* Card 1: Raw Records */}
+            <div className="bg-[#0F1722] border border-[#1A2636] rounded-xl p-3.5 space-y-1.5">
+              <div className="flex items-center justify-between text-[#64748B]">
+                <SourceIntelligenceIcon size={18} />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-[#64748B]">INGESTED</span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-slate-100 font-mono tabular-nums">
+                {stats.totalRecords}
+              </div>
+              <div className="text-xs font-semibold text-slate-200">Raw Source Records</div>
+              <div className="text-[11px] text-[#8B95A5] pt-1 border-t border-[#162231]/80 flex justify-between items-center">
+                <span>4 Scanning Tools</span>
+                <span className="text-cyan-400 font-mono font-medium">100% Ingested</span>
+              </div>
+            </div>
+
+            {/* Card 2: Normalized Assets */}
+            <div className="bg-[#0F1722] border border-blue-500/30 rounded-xl p-3.5 space-y-1.5">
+              <div className="flex items-center justify-between text-blue-400">
+                <AssetCorrelationIcon size={18} />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-blue-400">NORMALIZED</span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-blue-400 font-mono tabular-nums">
+                {stats.totalAssets}
+              </div>
+              <div className="text-xs font-semibold text-slate-200">Underlying Asset Groups</div>
+              <div className="text-[11px] text-[#8B95A5] pt-1 border-t border-[#162231]/80 flex justify-between items-center">
+                <span>{stats.correlatedCount} Confirmed Correlated</span>
+                <span className="text-emerald-400 font-mono font-semibold">{(stats.totalRecords / stats.totalAssets).toFixed(1)}:1</span>
+              </div>
+            </div>
+
+            {/* Card 3: Vulnerability Findings */}
+            <div className="bg-[#0F1722] border border-violet-500/30 rounded-xl p-3.5 space-y-1.5">
+              <div className="flex items-center justify-between text-violet-400">
+                <FindingsIntelligenceIcon size={18} />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-violet-400">FINDINGS</span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-violet-400 font-mono tabular-nums">
+                {stats.totalFindings}
+              </div>
+              <div className="text-xs font-semibold text-slate-200">Vulnerability Findings</div>
+              <div className="text-[11px] text-[#8B95A5] pt-1 border-t border-[#162231]/80 flex justify-between items-center">
+                <span>Cross-Scanner CVE Detections</span>
+                <span className="text-violet-300 font-mono font-medium">Raw Telemetry</span>
+              </div>
+            </div>
+
+            {/* Card 4: Potential Remediation Issues */}
+            <div className="bg-[#0F1722] border border-emerald-500/30 rounded-xl p-3.5 space-y-1.5">
+              <div className="flex items-center justify-between text-emerald-400">
+                <CheckCircle2 size={18} className="text-emerald-400" />
+                <span className="text-[10px] font-mono uppercase tracking-wider text-emerald-400">ACTIONABLE</span>
+              </div>
+              <div className="text-2xl sm:text-3xl font-extrabold text-emerald-400 font-mono tabular-nums">
+                {stats.totalFindingGroups}
+              </div>
+              <div className="text-xs font-semibold text-slate-200">Remediation Issues</div>
+              <div className="text-[11px] text-[#8B95A5] pt-1 border-t border-[#162231]/80 flex justify-between items-center">
+                <span>Consolidated Work Packages</span>
+                <span className="text-emerald-400 font-mono font-semibold">Zero Noise</span>
+              </div>
+            </div>
+
+          </div>
+
+        </div>
+
+        {/* RIGHT COLUMN: ATTENTION REQUIRED (5 Cols) */}
+        <div className="lg:col-span-5 bg-[#0A1017] border border-amber-500/30 rounded-2xl p-5 sm:p-6 shadow-sm flex flex-col justify-between space-y-4">
+          
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-[#162231] pb-3">
+              <div className="flex items-center gap-2">
+                <AttentionRadarIcon size={20} />
+                <div>
+                  <h2 className="text-sm font-bold text-amber-300 uppercase tracking-wide flex items-center gap-1.5">
+                    <span>ATTENTION REQUIRED</span>
+                  </h2>
+                  <p className="text-[11px] text-[#94A3B8]">
+                    Deterministic attribute conflicts requiring human adjudication
+                  </p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-xs font-bold font-mono bg-amber-500/20 text-amber-300 border border-amber-500/40">
+                {reviewRequiredAssets.length} Review Required
+              </span>
+            </div>
+
+            {/* Dynamic List of Review-Required Assets */}
+            <div className="space-y-2.5">
+              {reviewRequiredAssets.length === 0 ? (
+                <div className="p-4 bg-[#0F1722] rounded-xl border border-[#162231] text-xs text-[#8B95A5] text-center">
+                  All asset correlations are confirmed. Zero conflicting attributes detected.
+                </div>
+              ) : (
+                reviewRequiredAssets.map(asset => {
+                  const conflictDesc = asset.conflictingAttributes?.[0]?.description ||
+                    (asset.canonicalHostname.includes('WORKSTATION')
+                      ? 'Conflicting OS and serial numbers across sensors'
+                      : 'Telemetry mismatch across network discovery scans');
+
+                  return (
+                    <div
+                      key={asset.underlyingAssetId}
+                      className="p-3 bg-[#14120D] border border-amber-500/30 rounded-xl flex items-center justify-between gap-3 hover:border-amber-500/60 transition"
+                    >
+                      <div className="min-w-0 space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-xs text-amber-200 truncate font-mono">
+                            {asset.canonicalHostname}
+                          </span>
+                          <span className="text-[10px] text-[#8B95A5] font-mono">
+                            {asset.underlyingAssetId}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-[#94A3B8] leading-tight truncate">
+                          {conflictDesc}
+                        </p>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => handleInvestigateReview(asset.underlyingAssetId)}
+                        className="px-2.5 py-1 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer"
+                        title={`Investigate ${asset.canonicalHostname}`}
+                      >
+                        <span>Inspect</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Primary CTA Button for Right Column */}
+          <div className="pt-2 border-t border-[#162231]">
+            <button
+              type="button"
+              onClick={() => handleInvestigateReview()}
+              className="w-full py-2.5 px-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+            >
+              <AlertTriangle className="w-4 h-4" />
+              <span>Investigate Review Required ({reviewRequiredAssets.length}) →</span>
+            </button>
+          </div>
+
+        </div>
+
       </div>
 
       {/* ========================================================================= */}
@@ -256,7 +483,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
                 {stats.totalFindings} Findings
               </span>
             </div>
-            <div className="text-xs font-semibold text-[#94A3B8]">Unified Remediation Issues</div>
+            <div className="text-xs font-semibold text-[#94A3B8]">Potential Remediation Issues</div>
             <div className="pt-2 border-t border-[#162231] text-[11px] text-[#64748B] flex justify-between">
               <span>De-duplicated CVEs</span>
               <span className="text-violet-300 font-semibold">Zero Noise</span>
@@ -916,6 +1143,7 @@ export const OverviewTab: React.FC<OverviewTabProps> = ({
         clusters={clusters}
         findings={findings}
         findingGroups={findingGroups}
+        aiInsights={aiInsights}
       />
 
     </div>

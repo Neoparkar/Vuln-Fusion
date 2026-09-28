@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { UnderlyingAsset, AssetRecord, VulnerabilityFinding, FindingCorrelationGroup } from '../types/vulnfusion';
+import { UnderlyingAsset, AssetRecord, VulnerabilityFinding, FindingCorrelationGroup, AIAnalystInsight } from '../types/vulnfusion';
 import {
   exportExecutiveToPdf,
   exportExecutiveToJson,
@@ -32,6 +32,7 @@ interface ExecutiveExportModalProps {
   clusters: UnderlyingAsset[];
   findings: VulnerabilityFinding[];
   findingGroups: FindingCorrelationGroup[];
+  aiInsights?: AIAnalystInsight[];
 }
 
 type ExportFormat = 'PDF' | 'CSV' | 'JSON' | 'HTML' | 'MARKDOWN';
@@ -43,6 +44,7 @@ export const ExecutiveExportModal: React.FC<ExecutiveExportModalProps> = ({
   clusters,
   findings,
   findingGroups,
+  aiInsights = [],
 }) => {
   const [selectedFormat, setSelectedFormat] = useState<ExportFormat>('PDF');
   const [status, setStatus] = useState<'IDLE' | 'GENERATING' | 'SUCCESS' | 'ERROR'>('IDLE');
@@ -64,7 +66,7 @@ export const ExecutiveExportModal: React.FC<ExecutiveExportModalProps> = ({
     {
       format: 'PDF',
       label: 'Executive PDF Briefing',
-      description: 'Formal executive document with KPI metrics, uncertainty radar, and asset inventory.',
+      description: 'Formal executive document with KPI metrics, uncertainty radar, and AI analyst insights.',
       badge: 'Recommended for Leadership',
       icon: <ExportPdfIcon size={28} />,
       color: 'border-rose-500/30 hover:border-rose-500/60 bg-rose-500/5',
@@ -80,7 +82,7 @@ export const ExecutiveExportModal: React.FC<ExecutiveExportModalProps> = ({
     {
       format: 'JSON',
       label: 'Machine-Readable JSON',
-      description: 'Complete programmatic telemetry payload including source breakdown and attention signals.',
+      description: 'Complete programmatic telemetry payload including source breakdown and AI analyst insights.',
       badge: 'API & Ingestion',
       icon: <ExportJsonIcon size={28} />,
       color: 'border-cyan-500/30 hover:border-cyan-500/60 bg-cyan-500/5',
@@ -96,7 +98,7 @@ export const ExecutiveExportModal: React.FC<ExecutiveExportModalProps> = ({
     {
       format: 'MARKDOWN',
       label: 'Executive Markdown Brief',
-      description: 'Formatted markdown table and bullet points ready for ticketing or Wiki documentation.',
+      description: 'Formatted markdown table and AI analyst insights ready for ticketing or Wiki documentation.',
       badge: 'Documentation',
       icon: <ExportMarkdownIcon size={28} />,
       color: 'border-amber-500/30 hover:border-amber-500/60 bg-amber-500/5',
@@ -113,19 +115,19 @@ export const ExecutiveExportModal: React.FC<ExecutiveExportModalProps> = ({
 
       switch (selectedFormat) {
         case 'PDF':
-          filename = exportExecutiveToPdf(records, clusters, findings, findingGroups);
+          filename = exportExecutiveToPdf(records, clusters, findings, findingGroups, aiInsights);
           break;
         case 'CSV':
           filename = exportExecutiveToCsv(records, clusters, findings, findingGroups);
           break;
         case 'JSON':
-          filename = exportExecutiveToJson(records, clusters, findings, findingGroups);
+          filename = exportExecutiveToJson(records, clusters, findings, findingGroups, aiInsights);
           break;
         case 'HTML':
           filename = exportExecutiveToHtml(records, clusters, findings, findingGroups);
           break;
         case 'MARKDOWN':
-          filename = exportExecutiveToMarkdown(records, clusters, findings, findingGroups);
+          filename = exportExecutiveToMarkdown(records, clusters, findings, findingGroups, aiInsights);
           break;
       }
 

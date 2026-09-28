@@ -12,6 +12,7 @@ import {
   AssetArchiveRecord,
   ArchiveReason,
   LifecyclePolicyConfig,
+  AIAnalystInsight,
 } from './types/vulnfusion';
 import { DEFAULT_LIFECYCLE_POLICY } from './utils/lifecycleUtils';
 import { Sidebar } from './components/Sidebar';
@@ -72,6 +73,22 @@ function MainWorkspace() {
   const [evidenceAsset, setEvidenceAsset] = useState<UnderlyingAsset | null>(null);
   const [exceptionAsset, setExceptionAsset] = useState<UnderlyingAsset | null>(null);
   const [aiAsset, setAiAsset] = useState<UnderlyingAsset | null>(null);
+  const [aiInsights, setAiInsights] = useState<AIAnalystInsight[]>([]);
+
+  const handleAddAiInsight = (insight: AIAnalystInsight) => {
+    setAiInsights(prev => {
+      const exists = prev.some(i => i.assetId === insight.assetId && i.question === insight.question);
+      if (exists) return prev;
+      return [...prev, insight];
+    });
+    showToast('info', 'AI Insight Added', `Added AI explanation for ${insight.assetName} to Executive Report.`);
+    addAuditLog('ADD_AI_INSIGHT', insight.assetId, `Added AI explanation to Executive Report for asset ${insight.assetName}. Model: ${insight.model}`);
+  };
+
+  const handleRemoveAiInsight = (assetId: string, question: string) => {
+    setAiInsights(prev => prev.filter(i => !(i.assetId === assetId && i.question === question)));
+    showToast('info', 'AI Insight Removed', 'Removed AI explanation from Executive Report.');
+  };
 
   const addAuditLog = (action: string, targetId: string, details: string) => {
     const newEntry: AuditLogEntry = {
@@ -279,6 +296,14 @@ function MainWorkspace() {
     setActiveTab('findings');
   };
 
+  const handleInvestigateReviewRequired = (assetGroupId?: string) => {
+    const targetId = assetGroupId || clusters.find(c => c.correlationStatus === 'REVIEW_REQUIRED')?.underlyingAssetId;
+    if (targetId) {
+      setTargetAssetGroupId(targetId);
+    }
+    setActiveTab('correlation');
+  };
+
   const reviewCount = clusters.filter(c => c.correlationStatus === 'REVIEW_REQUIRED').length;
   const demoAsset = clusters.find(c => c.canonicalHostname === 'WEB-SRV-01') || clusters[0];
 
@@ -296,14 +321,14 @@ function MainWorkspace() {
   }
 
   return (
-    <div className="min-h-screen bg-[#071019] text-[#F4F7FB] font-sans flex flex-col md:flex-row antialiased selection:bg-[#00B8FF]/30 selection:text-white relative">
+    <div className="min-h-screen bg-[#090B0F] text-[#F1F5F9] font-sans flex flex-col md:flex-row antialiased selection:bg-[#3B82F6]/30 selection:text-white relative">
       
       {/* 1. Persistent Left Sidebar */}
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         reviewCount={reviewCount}
-        totalTests={98}
+        totalTests={118}
         onOpenAIAnalyst={() => handleExplainAI(demoAsset)}
       />
 
@@ -318,7 +343,7 @@ function MainWorkspace() {
           totalRecords={records.length}
           totalAssetGroups={clusters.length}
           totalFindings={SYNTHETIC_FINDINGS.length}
-          totalTests={98}
+          totalTests={118}
           onOpenAIAnalyst={() => handleExplainAI(demoAsset)}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}
@@ -368,7 +393,9 @@ function MainWorkspace() {
               findingGroups={findingGroups}
               onNavigateTab={setActiveTab}
               onOpenAIAnalyst={() => handleExplainAI(demoAsset)}
+              onInvestigateReviewRequired={handleInvestigateReviewRequired}
               externalSearchQuery={searchQuery}
+              aiInsights={aiInsights}
             />
           )}
 
@@ -464,6 +491,9 @@ function MainWorkspace() {
       <AIAnalystModal
         asset={aiAsset}
         onClose={() => setAiAsset(null)}
+        aiInsights={aiInsights}
+        onAddInsight={handleAddAiInsight}
+        onRemoveInsight={handleRemoveAiInsight}
         onViewEvidence={(asset) => {
           setAiAsset(null);
           handleViewEvidence(asset);

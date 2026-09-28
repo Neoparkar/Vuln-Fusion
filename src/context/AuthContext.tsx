@@ -12,6 +12,9 @@ interface AuthContextType {
   isLoading: boolean;
   isAuthenticated: boolean;
   isConfigured: boolean;
+  signInWithPassword: (email: string, password: string) => Promise<any>;
+  signUpWithPassword: (email: string, password: string) => Promise<any>;
+  resetPasswordForEmail: (email: string) => Promise<any>;
   signInWithMagicLink: (email: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
@@ -33,10 +36,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     let mounted = true;
     const hasAuthHash = window.location.hash.includes('access_token') || window.location.hash.includes('error');
+    const urlParams = new URLSearchParams(window.location.search);
+    const authCode = urlParams.get('code');
 
-    // Get initial session safely
-    authService.getSession()
-      .then(async (currentSession) => {
+    const handleAuthInit = async () => {
+      try {
+        if (authCode) {
+          const { error: exchangeError } = await supabase.auth.exchangeCodeForSession(authCode);
+          if (exchangeError) {
+            console.error('Code exchange error:', exchangeError.message);
+          }
+          urlParams.delete('code');
+          const newSearch = urlParams.toString();
+          const cleanSearch = newSearch ? `?${newSearch}` : '';
+          window.history.replaceState(null, '', window.location.pathname + cleanSearch + window.location.hash);
+        }
+
+        // Get initial session safely
+        const currentSession = await authService.getSession();
         if (!mounted) return;
         if (currentSession) {
           setSession(currentSession);
@@ -48,22 +65,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             console.error('Demo membership & sync warning:', err);
           }
           setIsLoading(false);
-          if (hasAuthHash) {
+          if (hasAuthHash || authCode) {
             window.history.replaceState(null, '', window.location.pathname + window.location.search);
           }
-        } else if (!hasAuthHash) {
+        } else if (!hasAuthHash && !authCode) {
           setSession(null);
           setCurrentUser(null);
           setIsLoading(false);
-        }
-      })
-      .catch((err) => {
-        if (!mounted) return;
-        console.error('Error getting session:', err);
-        if (!hasAuthHash) {
+        } else {
           setIsLoading(false);
         }
-      });
+      } catch (err) {
+        if (!mounted) return;
+        console.error('Error getting session:', err);
+        if (!hasAuthHash && !authCode) {
+          setIsLoading(false);
+        } else {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    handleAuthInit();
 
     // Listen for auth changes safely
     let subscription: any = null;
@@ -108,6 +131,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
+  const signInWithPassword = async (email: string, password: string) => {
+    return await authService.signInWithPassword(email, password);
+  };
+
+  const signUpWithPassword = async (email: string, password: string) => {
+    return await authService.signUpWithPassword(email, password);
+  };
+
+  const resetPasswordForEmail = async (email: string) => {
+    return await authService.resetPasswordForEmail(email);
+  };
+
   const signInWithMagicLink = async (email: string) => {
     await authService.signInWithMagicLink(email);
   };
@@ -135,6 +170,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     isLoading,
     isAuthenticated: Boolean(currentUser),
     isConfigured: isSupabaseConfigured,
+    signInWithPassword,
+    signUpWithPassword,
+    resetPasswordForEmail,
     signInWithMagicLink,
     signInWithGoogle,
     signOut,

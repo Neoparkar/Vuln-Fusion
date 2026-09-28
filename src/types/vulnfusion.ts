@@ -295,3 +295,19 @@ export interface DataQualityTestResult {
   description: string;
   details: string;
 }
+
+export interface AIAnalystInsight {
+  assetId: string;
+  assetName: string;
+  correlationStatus: string;
+  confidence: number;
+  question: string;
+  explanation: string;
+  evidenceReferences: string[];
+  matchedSignalsCount: number;
+  conflictsCount: number;
+  memberRecordIds: string[];
+  provider: string;
+  model: string;
+  generatedAt: string;
+}

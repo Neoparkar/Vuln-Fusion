@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from 'react';
-import { Sparkles, X, AlertCircle, CheckCircle2, Loader2, ShieldCheck, FileText, ArrowRight } from 'lucide-react';
-import { UnderlyingAsset } from '../types/vulnfusion';
+import { Sparkles, X, AlertCircle, CheckCircle2, Loader2, ShieldCheck, FileText, ArrowRight, Download, Copy } from 'lucide-react';
+import { UnderlyingAsset, AIAnalystInsight } from '../types/vulnfusion';
+import { exportSingleAiInsightToPdf } from '../utils/executiveReportExport';
 
 interface AIAnalystModalProps {
   asset: UnderlyingAsset | null;
   onClose: () => void;
   onViewEvidence?: (asset: UnderlyingAsset) => void;
+  aiInsights?: AIAnalystInsight[];
+  onAddInsight?: (insight: AIAnalystInsight) => void;
+  onRemoveInsight?: (assetId: string, question: string) => void;
 }
 
-export const AIAnalystModal: React.FC<AIAnalystModalProps> = ({ asset, onClose, onViewEvidence }) => {
+export const AIAnalystModal: React.FC<AIAnalystModalProps> = ({
+  asset,
+  onClose,
+  onViewEvidence,
+  aiInsights = [],
+  onAddInsight,
+  onRemoveInsight,
+}) => {
   const [loading, setLoading] = useState(false);
   const [explanation, setExplanation] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   const underlyingAssetId = asset?.underlyingAssetId;
 
@@ -44,14 +57,14 @@ export const AIAnalystModal: React.FC<AIAnalystModalProps> = ({ asset, onClose, 
 
       const data = await response.json();
       if (!response.ok) {
-        setError('Gemini could not provide an explanation for this request.');
+        setError('AI Analyst explanation unavailable.');
       } else if (!data || typeof data.explanation !== 'string' || !data.explanation.trim()) {
-        setError('AI response could not be safely rendered.');
+        setError('AI Analyst explanation unavailable.');
       } else {
         setExplanation(data.explanation);
       }
     } catch (err: any) {
-      setError('Gemini could not provide an explanation for this request.');
+      setError('AI Analyst explanation unavailable.');
     } finally {
       setLoading(false);
     }
@@ -77,6 +90,81 @@ export const AIAnalystModal: React.FC<AIAnalystModalProps> = ({ asset, onClose, 
   const matchedCount = correlationEvidence.length;
   const conflictCount = conflictingAttributes.length;
   const evaluatedCount = matchedCount + conflictCount;
+
+  const questionText = `Explain why ${canonicalHostname} was correlated across multiple security sources. Use only the supplied deterministic evidence.`;
+  const isAlreadyAdded = aiInsights.some(i => i.assetId === underlyingAssetId && i.question === questionText);
+
+  const insightObj: AIAnalystInsight = {
+    assetId: underlyingAssetId || 'UNKNOWN',
+    assetName: canonicalHostname,
+    correlationStatus,
+    confidence,
+    question: questionText,
+    explanation: explanation || '',
+    evidenceReferences: correlationEvidence.map(e => e.name),
+    matchedSignalsCount: matchedCount,
+    conflictsCount: conflictCount,
+    memberRecordIds,
+    provider: 'Google Gemini',
+    model: 'gemini-3.8-flash',
+    generatedAt: new Date().toISOString(),
+  };
+
+  const handleExportPdf = () => {
+    if (!explanation) return;
+    exportSingleAiInsightToPdf(insightObj);
+  };
+
+  const handleExportMarkdown = () => {
+    if (!explanation) return;
+    const md = `# AI Analyst Insight\n\n### Asset\n${canonicalHostname} (${underlyingAssetId})\n\n### Deterministic Result\n${correlationStatus}\n\n### Confidence\n${confidence}%\n\n### Question\n${questionText}\n\n### AI-Generated Explanation\n${explanation}\n\n### Evidence Referenced\n${correlationEvidence.map(e => e.name).join(', ') || 'None'}\n\n### Provenance\n- Provider: Google Gemini\n- Model: gemini-3.8-flash\n- Generated At: ${new Date().toISOString()}\n\n### Authority\nThe deterministic VulnFusion engine remains authoritative. AI output is explanatory only.\n`;
+    const blob = new Blob([md], { type: 'text/markdown;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `vulnfusion-ai-insight-${underlyingAssetId}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const handleExportJson = () => {
+    if (!explanation) return;
+    const payload = {
+      type: 'vulnfusion_ai_insight',
+      asset: { assetId: underlyingAssetId, canonicalHostname, correlationStatus, confidence },
+      question: questionText,
+      explanation,
+      evidenceReferences: correlationEvidence.map(e => e.name),
+      provider: 'Google Gemini',
+      model: 'gemini-3.8-flash',
+      generatedAt: new Date().toISOString(),
+      authority: 'deterministic_engine_authoritative_ai_explanatory_only'
+    };
+    const jsonStr = JSON.stringify(payload, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `vulnfusion-ai-insight-${underlyingAssetId}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  };
+
+  const handleExportClipboard = async () => {
+    if (!explanation) return;
+    const text = `VULNFUSION AI ANALYST INSIGHT\nAsset: ${canonicalHostname} (${underlyingAssetId})\nStatus: ${correlationStatus} (${confidence}% confidence)\nQuestion: ${questionText}\n\nExplanation:\n${explanation}\n\nAuthority: Deterministic VulnFusion engine is authoritative; AI output is explanatory only.`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy', err);
+    }
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 sm:p-6 overflow-y-auto animate-fadeIn">
@@ -229,11 +317,72 @@ export const AIAnalystModal: React.FC<AIAnalystModalProps> = ({ asset, onClose, 
             {/* 3. Success State */}
             {!loading && !error && explanation && (
               <div className="space-y-3">
-                <div className="flex items-center justify-between text-xs text-[#64748B] font-medium border-b border-[#1E2631] pb-2">
-                  <span>Model: Server-Side Gemini</span>
-                  <span className="text-emerald-400 flex items-center gap-1.5 font-semibold">
-                    <CheckCircle2 className="w-3.5 h-3.5" /> Grounded Sidecar Explanation
-                  </span>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-[#64748B] font-medium border-b border-[#1E2631] pb-2">
+                  <div className="flex items-center gap-2">
+                    <span>Model: Server-Side Gemini</span>
+                    <span className="text-emerald-400 flex items-center gap-1.5 font-semibold">
+                      <CheckCircle2 className="w-3.5 h-3.5" /> Grounded Sidecar Explanation
+                    </span>
+                  </div>
+
+                  {/* Executive Report & Export Actions */}
+                  <div className="flex items-center gap-2 relative">
+                    <button
+                      onClick={() => {
+                        if (isAlreadyAdded) {
+                          onRemoveInsight?.(underlyingAssetId || '', questionText);
+                        } else {
+                          onAddInsight?.(insightObj);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-xl font-semibold transition flex items-center gap-1.5 border text-xs ${
+                        isAlreadyAdded
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-500/30'
+                          : 'bg-purple-600/30 text-purple-200 border-purple-500/40 hover:bg-purple-600/40'
+                      }`}
+                    >
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>{isAlreadyAdded ? 'Added to Executive Report ✓' : 'Add to Executive Report'}</span>
+                    </button>
+
+                    <div className="relative">
+                      <button
+                        onClick={() => setShowExportMenu(!showExportMenu)}
+                        className="px-3 py-1.5 bg-[#181E26] hover:bg-[#1E2631] text-slate-200 border border-[#26303E] font-semibold rounded-xl transition flex items-center gap-1"
+                      >
+                        <span>Export ▾</span>
+                      </button>
+
+                      {showExportMenu && (
+                        <div className="absolute right-0 mt-2 w-48 bg-[#151A21] border border-[#26303E] rounded-xl shadow-2xl py-1 z-50 text-xs">
+                          <button
+                            onClick={() => { handleExportPdf(); setShowExportMenu(false); }}
+                            className="w-full text-left px-4 py-2 hover:bg-[#1E2631] text-slate-200 flex items-center gap-2"
+                          >
+                            <span>PDF (.pdf)</span>
+                          </button>
+                          <button
+                            onClick={() => { handleExportMarkdown(); setShowExportMenu(false); }}
+                            className="w-full text-left px-4 py-2 hover:bg-[#1E2631] text-slate-200 flex items-center gap-2"
+                          >
+                            <span>Markdown (.md)</span>
+                          </button>
+                          <button
+                            onClick={() => { handleExportJson(); setShowExportMenu(false); }}
+                            className="w-full text-left px-4 py-2 hover:bg-[#1E2631] text-slate-200 flex items-center gap-2"
+                          >
+                            <span>JSON (.json)</span>
+                          </button>
+                          <button
+                            onClick={() => { handleExportClipboard(); setShowExportMenu(false); }}
+                            className="w-full text-left px-4 py-2 hover:bg-[#1E2631] text-slate-200 flex items-center gap-2"
+                          >
+                            <span>{copied ? 'Copied to Clipboard ✓' : 'Copy to Clipboard'}</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="bg-[#151A21] border border-[#1E2631] rounded-2xl p-5 text-sm text-slate-200 whitespace-pre-wrap leading-relaxed font-sans">

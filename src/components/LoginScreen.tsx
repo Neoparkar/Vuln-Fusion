@@ -2,59 +2,94 @@ import React, { useRef, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { VulnFusionBrandIcon } from './icons/VulnFusionIcons';
 import { VulnFusionRobot } from './VulnFusionRobot';
-import { Mail, ArrowRight, Loader2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { Mail, Lock, ArrowRight, Loader2, AlertCircle, CheckCircle2, KeyRound, UserPlus, LogIn, ShieldCheck } from 'lucide-react';
 
 export const LoginScreen: React.FC = () => {
-  const { signInWithMagicLink, signInWithGoogle, isConfigured } = useAuth();
+  const {
+    signInWithPassword,
+    signUpWithPassword,
+    resetPasswordForEmail,
+    signInWithMagicLink,
+    isConfigured
+  } = useAuth();
+
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'magic' | 'forgot'>('signin');
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
-  const [emailSent, setEmailSent] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [emailFocused, setEmailFocused] = useState(false);
   const emailInputRef = useRef<HTMLInputElement>(null);
 
-  const handleMagicLinkSubmit = async (e: React.FormEvent) => {
+  // Password validation rules
+  const hasMinLength = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const isPasswordValid = hasMinLength && hasUpper && hasLower && hasNumber;
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setErrorMsg(null);
+    setSuccessMsg(null);
+
     if (!email || !email.includes('@')) {
-      setErrorMsg('Please enter a valid work email address.');
+      setErrorMsg('Please enter a valid email address.');
       return;
     }
 
     if (!isConfigured) {
-      setErrorMsg('Authentication service is currently unavailable.');
+      setErrorMsg('Authentication service is currently unconfigured.');
       return;
     }
 
     setLoading(true);
-    setErrorMsg(null);
 
     try {
-      await signInWithMagicLink(email.trim());
-      setEmailSent(true);
+      if (authMode === 'signin') {
+        if (!password) {
+          setErrorMsg('Please enter your password.');
+          setLoading(false);
+          return;
+        }
+        await signInWithPassword(email.trim(), password);
+      } else if (authMode === 'signup') {
+        if (!isPasswordValid) {
+          setErrorMsg('Password does not meet the security requirements.');
+          setLoading(false);
+          return;
+        }
+        if (password !== confirmPassword) {
+          setErrorMsg('Passwords do not match.');
+          setLoading(false);
+          return;
+        }
+        await signUpWithPassword(email.trim(), password);
+        setSuccessMsg('Account created successfully! You can now sign in or check your email for confirmation.');
+      } else if (authMode === 'magic') {
+        await signInWithMagicLink(email.trim());
+        setSuccessMsg(`Secure sign-in magic link sent to ${email}. Check your inbox.`);
+      } else if (authMode === 'forgot') {
+        await resetPasswordForEmail(email.trim());
+        setSuccessMsg(`Password reset instructions sent to ${email}.`);
+      }
     } catch (err: any) {
-      setErrorMsg(err?.message || 'Failed to send secure sign-in link. Please check your network and try again.');
+      setErrorMsg(err?.message || 'Authentication operation failed. Please check credentials and try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    if (!isConfigured) {
-      setErrorMsg('Google sign-in is not configured for this environment. Please use email sign-in.');
-      return;
-    }
-
-    try {
-      setErrorMsg(null);
-      await signInWithGoogle();
-    } catch (err: any) {
-      setErrorMsg(err?.message || 'Google sign-in is not configured for this environment. Please use email sign-in.');
-    }
+  const fillTestAdmin = () => {
+    setEmail('adminvulnfusion@gmail.com');
+    setAuthMode('signin');
   };
 
   const robotState = loading
     ? 'processing'
-    : emailSent
+    : successMsg
     ? 'success'
     : emailFocused
     ? 'focus'
@@ -77,17 +112,61 @@ export const LoginScreen: React.FC = () => {
               VulnFusion
             </h1>
             <p className="text-xs uppercase tracking-widest text-[#5FA8D3] font-mono mt-1">
-              Asset Identity & Vulnerability Intelligence
+              Sign in to your VulnFusion organization
             </p>
           </div>
         </div>
 
-        {/* Previous Working Robot Guide with Mouse & Email Tracking */}
+        {/* Robot Guide */}
         <VulnFusionRobot state={robotState} emailInputRef={emailInputRef} />
 
         {/* Login Card */}
         <div className="bg-[#0A101A] border border-[#1A2638] rounded-2xl p-6 sm:p-8 shadow-2xl space-y-6 relative">
           
+          {/* Mode Switcher Tabs */}
+          <div className="grid grid-cols-4 bg-[#04070B] p-1 rounded-xl border border-[#1E2D42] text-xs font-mono">
+            <button
+              type="button"
+              onClick={() => { setAuthMode('signin'); setErrorMsg(null); setSuccessMsg(null); }}
+              className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                authMode === 'signin' ? 'bg-[#185382] text-white font-medium shadow' : 'text-[#718197] hover:text-white'
+              }`}
+            >
+              <LogIn className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign In</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('signup'); setErrorMsg(null); setSuccessMsg(null); }}
+              className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                authMode === 'signup' ? 'bg-[#185382] text-white font-medium shadow' : 'text-[#718197] hover:text-white'
+              }`}
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Sign Up</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('magic'); setErrorMsg(null); setSuccessMsg(null); }}
+              className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                authMode === 'magic' ? 'bg-[#185382] text-white font-medium shadow' : 'text-[#718197] hover:text-white'
+              }`}
+            >
+              <Mail className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Magic Link</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setAuthMode('forgot'); setErrorMsg(null); setSuccessMsg(null); }}
+              className={`py-2 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                authMode === 'forgot' ? 'bg-[#185382] text-white font-medium shadow' : 'text-[#718197] hover:text-white'
+              }`}
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Reset</span>
+            </button>
+          </div>
+
           {errorMsg && (
             <div className="bg-rose-500/10 border border-rose-500/30 rounded-xl p-3 text-xs text-rose-300 flex items-start gap-2">
               <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
@@ -95,56 +174,146 @@ export const LoginScreen: React.FC = () => {
             </div>
           )}
 
-          {!emailSent ? (
-            <div className="space-y-6">
-              <div className="space-y-1">
-                <h2 className="text-sm font-semibold text-white">Sign in to your workspace</h2>
-                <p className="text-xs text-[#8A99AF]">Enter your work email to receive a secure sign-in link.</p>
-              </div>
+          {successMsg && (
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3 text-xs text-emerald-300 flex items-start gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <span>{successMsg}</span>
+            </div>
+          )}
 
-              <form onSubmit={handleMagicLinkSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center">
+                <label className="block text-xs font-mono uppercase tracking-wider text-[#718197]">
+                  Work Email
+                </label>
+                {authMode === 'signin' && (
+                  <button
+                    type="button"
+                    onClick={fillTestAdmin}
+                    className="text-[11px] text-[#5FA8D3] hover:underline font-mono"
+                  >
+                    [ Fill Admin Account ]
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5F6D82]">
+                  <Mail className="w-4 h-4" />
+                </span>
+                <input
+                  ref={emailInputRef}
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                  placeholder="analyst@enterprise.com"
+                  required
+                  className="w-full bg-[#04070B] border border-[#1E2D42] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#4E5D73] focus:outline-none focus:border-[#3B82C4] focus:ring-1 focus:ring-[#3B82C4] transition-all min-h-[44px]"
+                />
+              </div>
+            </div>
+
+            {(authMode === 'signin' || authMode === 'signup') && (
+              <div className="space-y-1.5">
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-mono uppercase tracking-wider text-[#718197]">
+                    Password
+                  </label>
+                  {authMode === 'signin' && (
+                    <button
+                      type="button"
+                      onClick={() => { setAuthMode('forgot'); setErrorMsg(null); setSuccessMsg(null); }}
+                      className="text-[11px] text-[#5FA8D3] hover:underline font-mono"
+                    >
+                      Forgot password?
+                    </button>
+                  )}
+                </div>
+                <div className="relative">
+                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5F6D82]">
+                    <Lock className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••••••"
+                    required
+                    className="w-full bg-[#04070B] border border-[#1E2D42] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#4E5D73] focus:outline-none focus:border-[#3B82C4] focus:ring-1 focus:ring-[#3B82C4] transition-all min-h-[44px]"
+                  />
+                </div>
+              </div>
+            )}
+
+            {authMode === 'signup' && (
+              <div className="space-y-3">
                 <div className="space-y-1.5">
                   <label className="block text-xs font-mono uppercase tracking-wider text-[#718197]">
-                    Work Email
+                    Confirm Password
                   </label>
                   <div className="relative">
                     <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-[#5F6D82]">
-                      <Mail className="w-4 h-4" />
+                      <Lock className="w-4 h-4" />
                     </span>
                     <input
-                      ref={emailInputRef}
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      onFocus={() => setEmailFocused(true)}
-                      onBlur={() => setEmailFocused(false)}
-                      placeholder="analyst@enterprise.com"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="••••••••••••"
                       required
                       className="w-full bg-[#04070B] border border-[#1E2D42] rounded-xl pl-10 pr-4 py-3 text-sm text-white placeholder-[#4E5D73] focus:outline-none focus:border-[#3B82C4] focus:ring-1 focus:ring-[#3B82C4] transition-all min-h-[44px]"
                     />
                   </div>
                 </div>
 
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full bg-[#185382] hover:bg-[#20649B] text-white font-medium rounded-xl py-3 px-4 text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50 min-h-[44px] cursor-pointer"
-                >
-                  {loading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 animate-spin text-white" />
-                      <span>Sending secure link...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>Send secure sign-in link</span>
-                      <ArrowRight className="w-4 h-4" />
-                    </>
-                  )}
-                </button>
-              </form>
+                {/* Password Strength Checklist */}
+                <div className="bg-[#04070B] border border-[#182436] rounded-xl p-3 space-y-1.5 text-xs font-mono">
+                  <div className="text-[#8A99AF] font-semibold mb-1">Password Security Requirements:</div>
+                  <div className={`flex items-center gap-2 ${hasMinLength ? 'text-emerald-400' : 'text-[#5F6D82]'}`}>
+                    <span>{hasMinLength ? '✓' : '•'}</span> At least 8 characters
+                  </div>
+                  <div className={`flex items-center gap-2 ${hasUpper ? 'text-emerald-400' : 'text-[#5F6D82]'}`}>
+                    <span>{hasUpper ? '✓' : '•'}</span> One uppercase letter (A-Z)
+                  </div>
+                  <div className={`flex items-center gap-2 ${hasLower ? 'text-emerald-400' : 'text-[#5F6D82]'}`}>
+                    <span>{hasLower ? '✓' : '•'}</span> One lowercase letter (a-z)
+                  </div>
+                  <div className={`flex items-center gap-2 ${hasNumber ? 'text-emerald-400' : 'text-[#5F6D82]'}`}>
+                    <span>{hasNumber ? '✓' : '•'}</span> One number (0-9)
+                  </div>
+                </div>
+              </div>
+            )}
 
-              <div className="relative flex py-2 items-center">
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full bg-[#185382] hover:bg-[#20649B] text-white font-medium rounded-xl py-3 px-4 text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-900/20 disabled:opacity-50 min-h-[44px] cursor-pointer"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  <span>Processing...</span>
+                </>
+              ) : (
+                <>
+                  <span>
+                    {authMode === 'signin' && 'Sign In'}
+                    {authMode === 'signup' && 'Create Account'}
+                    {authMode === 'magic' && 'Send Magic Link'}
+                    {authMode === 'forgot' && 'Send Password Reset'}
+                  </span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {authMode === 'signin' && (
+            <div className="space-y-4 pt-1">
+              <div className="relative flex items-center">
                 <div className="flex-grow border-t border-[#182436]"></div>
                 <span className="flex-shrink mx-4 text-[#5F6D82] text-[11px] font-mono uppercase">OR</span>
                 <div className="flex-grow border-t border-[#182436]"></div>
@@ -152,50 +321,71 @@ export const LoginScreen: React.FC = () => {
 
               <button
                 type="button"
-                onClick={handleGoogleSignIn}
-                className="w-full bg-[#0D1624] hover:bg-[#132033] border border-[#1E2D42] text-slate-200 font-medium rounded-xl py-3 px-4 text-sm flex items-center justify-center gap-3 transition-all min-h-[44px] cursor-pointer"
+                onClick={() => { setAuthMode('magic'); setErrorMsg(null); setSuccessMsg(null); }}
+                className="w-full bg-[#0D1624] hover:bg-[#132033] border border-[#1E2D42] text-slate-200 font-medium rounded-xl py-3 px-4 text-sm flex items-center justify-center gap-2 transition-all min-h-[44px] cursor-pointer"
               >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path
-                    fill="#EA4335"
-                    d="M12 5c1.6 0 3 .6 4.1 1.6l3.1-3.1C17.3 1.8 14.8 1 12 1 7.4 1 3.5 3.6 1.6 7.4l3.7 2.9C6.2 7.1 8.9 5 12 5z"
-                  />
-                  <path
-                    fill="#4285F4"
-                    d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.5c-.3 1.5-1.1 2.8-2.4 3.7l3.7 2.9c2.2-2 3.7-5 3.7-8.8z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.3 14.7c-.2-.7-.4-1.5-.4-2.3s.2-1.6.4-2.3L1.6 7.2C.6 9.2 0 11.5 0 14s.6 4.8 1.6 6.8l3.7-2.9z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c3.2 0 6-1.1 8-3l-3.7-2.9c-1.1.7-2.5 1.2-4.3 1.2-3.1 0-5.8-2.1-6.7-5.3L1.6 16C3.5 19.8 7.4 23 12 23z"
-                  />
-                </svg>
-                <span>Continue with Google</span>
+                <Mail className="w-4 h-4 text-[#5FA8D3]" />
+                <span>Send Magic Link</span>
               </button>
+
+              <div className="text-center text-xs text-[#718197]">
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => { setAuthMode('signup'); setErrorMsg(null); setSuccessMsg(null); }}
+                  className="text-[#5FA8D3] hover:underline font-medium ml-1"
+                >
+                  Create account
+                </button>
+              </div>
             </div>
-          ) : (
-            <div className="space-y-6 text-center py-4">
-              <div className="w-12 h-12 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 flex items-center justify-center mx-auto">
-                <CheckCircle2 className="w-6 h-6" />
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-lg font-bold text-white">Check your email</h2>
-                <p className="text-xs text-[#8A99AF] leading-relaxed">
-                  We sent a secure sign-in link to <span className="text-white font-medium">{email}</span>. Open the link to continue to VulnFusion.
-                </p>
-              </div>
+          )}
+
+          {authMode === 'signup' && (
+            <div className="text-center pt-2 text-xs text-[#718197]">
+              Already have an account?{' '}
               <button
                 type="button"
-                onClick={() => setEmailSent(false)}
-                className="text-xs text-[#5FA8D3] hover:underline font-mono"
+                onClick={() => { setAuthMode('signin'); setErrorMsg(null); setSuccessMsg(null); }}
+                className="text-[#5FA8D3] hover:underline font-medium ml-1"
               >
-                [ Back to sign in ]
+                Sign in
               </button>
             </div>
           )}
+
+          {authMode === 'magic' && (
+            <div className="text-center pt-2 text-xs text-[#718197]">
+              Prefer password sign in?{' '}
+              <button
+                type="button"
+                onClick={() => { setAuthMode('signin'); setErrorMsg(null); setSuccessMsg(null); }}
+                className="text-[#5FA8D3] hover:underline font-medium ml-1"
+              >
+                Sign in with password
+              </button>
+            </div>
+          )}
+
+          {authMode === 'forgot' && (
+            <div className="text-center pt-2 text-xs text-[#718197]">
+              Remembered your password?{' '}
+              <button
+                type="button"
+                onClick={() => { setAuthMode('signin'); setErrorMsg(null); setSuccessMsg(null); }}
+                className="text-[#5FA8D3] hover:underline font-medium ml-1"
+              >
+                Back to sign in
+              </button>
+            </div>
+          )}
+
+          <div className="text-center pt-2">
+            <span className="text-[11px] text-[#5F6D82] font-mono flex items-center justify-center gap-1">
+              <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+              Enterprise RBAC & PostgreSQL RLS Enforced
+            </span>
+          </div>
 
         </div>
 

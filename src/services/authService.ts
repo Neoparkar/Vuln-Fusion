@@ -13,6 +13,35 @@ export const authService = {
     return session;
   },
 
+  async signInWithPassword(email: string, password: string) {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async signUpWithPassword(email: string, password: string) {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: window.location.origin,
+      },
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  async resetPasswordForEmail(email: string) {
+    const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async signInWithMagicLink(email: string) {
     const redirectTo = window.location.origin;
     const { error } = await supabase.auth.signInWithOtp({
@@ -49,3 +78,4 @@ export const authService = {
     });
   },
 };
+

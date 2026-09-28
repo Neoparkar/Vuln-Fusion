@@ -90,8 +90,12 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
   React.useEffect(() => {
     if (initialAssetGroupId) {
       setSelectedAssetId(initialAssetGroupId);
+      const target = clusters.find(c => c.underlyingAssetId === initialAssetGroupId);
+      if (target && target.correlationStatus === 'REVIEW_REQUIRED') {
+        setStatusFilter('REVIEW_REQUIRED');
+      }
     }
-  }, [initialAssetGroupId]);
+  }, [initialAssetGroupId, clusters]);
 
   const handleToastNotice = (message: string, isError = false) => {
     setToastNotice({ message, isError });
