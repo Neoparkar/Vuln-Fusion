@@ -66,7 +66,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const userDropdownRef = useRef<HTMLDivElement>(null);
 
-  const { currentUser, signOut } = useAuth();
+  const { currentUser, signOut, isDemoMode } = useAuth();
   const { role: rbacRole } = useRBAC();
 
   // Close dropdown on outside click or escape
@@ -97,6 +97,22 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   const resolveRoleConfig = (): RoleDisplayConfig => {
     const normalizedRole = (rbacRole || currentUser?.user_metadata?.role || '').toLowerCase();
     const lowerEmail = (currentUser?.email || '').toLowerCase();
+
+    // Temporary Hackathon Presentation Demo Admin
+    if (
+      isDemoMode ||
+      lowerEmail === 'demo@vulnfusion.local' ||
+      currentUser?.user_metadata?.display_name === 'VulnFusion Demo Admin'
+    ) {
+      return {
+        displayName: 'VulnFusion Demo Admin',
+        roleLabel: 'ADMINISTRATOR',
+        badgeClass: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
+        iconBg: 'bg-amber-950/40 border-amber-500/30',
+        iconColor: 'text-amber-400',
+        Icon: ShieldCheck,
+      };
+    }
 
     // Administrator
     if (
@@ -339,6 +355,14 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             </button>
           )}
 
+          {/* Hackathon Presentation Demo Indicator */}
+          {isDemoMode && (
+            <div className="hidden lg:inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 border border-amber-500/30 rounded-lg text-amber-300 text-[11px] font-mono font-bold tracking-wide select-none">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <span>DEMO / PRESENTATION MODE</span>
+            </div>
+          )}
+
           {/* Role-Aware User Identity Control with Interactive Dropdown */}
           <div className="relative" ref={userDropdownRef}>
             <div className="flex items-center bg-[#151A21] hover:bg-[#181F28] border border-[#1E2631] hover:border-[#2A3442] rounded-xl transition-all duration-150 shadow-xs">
@@ -394,6 +418,19 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
             {userDropdownOpen && (
               <div className="absolute right-0 mt-2 w-72 bg-[#10141B] border border-[#1E2631] rounded-2xl p-3.5 shadow-2xl z-50 animate-in fade-in slide-in-from-top-1 duration-150">
                 
+                {/* Demo / Presentation Banner in Dropdown */}
+                {isDemoMode && (
+                  <div className="mb-2.5 p-2 bg-amber-500/10 border border-amber-500/30 rounded-xl text-center">
+                    <div className="flex items-center justify-center gap-1.5 text-[10px] font-mono font-bold text-amber-300 uppercase tracking-wider">
+                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span>DEMO / PRESENTATION MODE</span>
+                    </div>
+                    <span className="text-[9px] text-amber-400/80 block mt-0.5 font-mono">
+                      Synthetic Demonstration Sandbox
+                    </span>
+                  </div>
+                )}
+
                 {/* Profile Header */}
                 <div className="flex items-start gap-3 pb-3 border-b border-[#1A222D]">
                   <div className={`w-10 h-10 rounded-xl ${roleConfig.iconBg} border ${roleConfig.iconColor} flex items-center justify-center shrink-0`}>
@@ -439,7 +476,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                     className="w-full px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 hover:text-rose-200 border border-rose-500/30 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer"
                   >
                     <LogOut className="w-3.5 h-3.5" />
-                    <span>Sign Out</span>
+                    <span>{isDemoMode ? 'Exit Demo / Sign Out' : 'Sign Out'}</span>
                   </button>
                 </div>
 
@@ -651,7 +688,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
                 className="px-3 py-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/30 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors min-h-[44px] cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
-                <span>Sign Out</span>
+                <span>{isDemoMode ? 'Exit Demo / Sign Out' : 'Sign Out'}</span>
               </button>
             </div>
 

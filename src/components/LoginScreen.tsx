@@ -83,7 +83,8 @@ export const LoginScreen: React.FC = () => {
   };
 
   const fillTestAdmin = () => {
-    setEmail('adminvulnfusion@gmail.com');
+    setEmail('demo@vulnfusion.local');
+    setPassword('VulnFusion-Demo-2026!');
     setAuthMode('signin');
   };
 
