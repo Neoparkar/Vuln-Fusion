@@ -81,7 +81,11 @@ export const AdminManagementTab: React.FC<AdminManagementTabProps> = ({
   onNavigateTab,
   addAuditLog,
 }) => {
-  const { role, isAdmin, members, updateMemberRole, removeMember, refreshMembers } = useRBAC();
+  const { can, members, updateMemberRole, removeMember, refreshMembers } = useRBAC();
+  const canManageRoles = can('MANAGE_ROLES');
+  const canRemoveMembers = can('REMOVE_MEMBERS');
+  const canRevokeException = can('CREATE_EXCEPTION');
+  const deniedTitle = 'Unavailable for your role';
   const [subTab, setSubTab] = useState<AdminSubTab>('users');
 
   // SubTab 1: Users & Roles state
@@ -158,6 +162,10 @@ export const AdminManagementTab: React.FC<AdminManagementTabProps> = ({
 
   const handleSaveRole = async (userId: string) => {
     setActionMessage(null);
+    if (!can('MANAGE_ROLES')) {
+      setActionMessage({ type: 'error', text: 'Role change denied. Your role cannot manage roles.' });
+      return;
+    }
     const success = await updateMemberRole(userId, selectedNewRole);
     if (success) {
       setActionMessage({ type: 'success', text: `Member role updated to ${selectedNewRole}.` });
@@ -166,12 +174,17 @@ export const AdminManagementTab: React.FC<AdminManagementTabProps> = ({
         addAuditLog('MEMBER_ROLE_CHANGED', userId, `Updated role for ${userId} to ${selectedNewRole}.`);
       }
     } else {
-      setActionMessage({ type: 'error', text: 'Failed to update role. Safeguard: cannot remove the last administrator.' });
+      setActionMessage({ type: 'error', text: 'Role change denied. The last administrator must remain, or the membership update was not applied.' });
     }
   };
 
   const handleRemove = async (userId: string) => {
     setActionMessage(null);
+    if (!can('REMOVE_MEMBERS')) {
+      setActionMessage({ type: 'error', text: 'Member removal denied. Your role cannot remove members.' });
+      setConfirmDeleteUserId(null);
+      return;
+    }
     const success = await removeMember(userId);
     if (success) {
       setActionMessage({ type: 'success', text: 'Member removed from organization roster.' });
@@ -180,7 +193,7 @@ export const AdminManagementTab: React.FC<AdminManagementTabProps> = ({
         addAuditLog('MEMBER_REMOVED', userId, `Removed member ${userId} from demonstration roster.`);
       }
     } else {
-      setActionMessage({ type: 'error', text: 'Failed to remove member. Safeguard: cannot remove the last administrator.' });
+      setActionMessage({ type: 'error', text: 'Member removal denied. The last administrator must remain, or the membership update was not applied.' });
       setConfirmDeleteUserId(null);
     }
   };
@@ -633,20 +646,25 @@ export const AdminManagementTab: React.FC<AdminManagementTabProps> = ({
                               <button
                                 type="button"
                                 onClick={() => {
+                                  if (!canManageRoles) return;
                                   setEditingUserId(member.user_id);
                                   setSelectedNewRole(member.role);
                                 }}
-                                className="p-2 bg-[#0D1826] hover:bg-[#152538] text-slate-300 rounded-xl border border-[#1B3045] transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
-                                title="Change Role"
+                                disabled={!canManageRoles}
+                                className={`p-2 bg-[#0D1826] hover:bg-[#152538] text-slate-300 rounded-xl border border-[#1B3045] transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${canManageRoles ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
+                                title={canManageRoles ? 'Change Role' : deniedTitle}
                                 aria-label="Change Role"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
                               <button
                                 type="button"
-                                onClick={() => setConfirmDeleteUserId(member.user_id)}
-                                className="p-2 bg-rose-950/20 hover:bg-rose-900/40 text-rose-300 rounded-xl border border-rose-500/30 transition-colors cursor-pointer min-h-[36px] min-w-[36px] flex items-center justify-center"
-                                title="Remove User"
+                                onClick={() => {
+                                  if (canRemoveMembers) setConfirmDeleteUserId(member.user_id);
+                                }}
+                                disabled={!canRemoveMembers}
+                                className={`p-2 bg-rose-950/20 hover:bg-rose-900/40 text-rose-300 rounded-xl border border-rose-500/30 transition-colors min-h-[36px] min-w-[36px] flex items-center justify-center ${canRemoveMembers ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
+                                title={canRemoveMembers ? 'Remove User' : deniedTitle}
                                 aria-label="Remove User"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1146,8 +1164,12 @@ export const AdminManagementTab: React.FC<AdminManagementTabProps> = ({
                           {exc.status === 'ACTIVE' && onResolveException && (
                             <button
                               type="button"
-                              onClick={() => onResolveException(exc.exceptionId)}
-                              className="px-2.5 py-1 bg-amber-950/20 hover:bg-amber-900/40 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-mono transition-colors cursor-pointer min-h-[36px]"
+                              onClick={() => {
+                                if (canRevokeException) onResolveException(exc.exceptionId);
+                              }}
+                              disabled={!canRevokeException}
+                              title={canRevokeException ? 'Revoke exception' : deniedTitle}
+                              className={`px-2.5 py-1 bg-amber-950/20 hover:bg-amber-900/40 text-amber-300 border border-amber-500/30 rounded-lg text-xs font-mono transition-colors min-h-[36px] ${canRevokeException ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
                             >
                               Revoke
                             </button>

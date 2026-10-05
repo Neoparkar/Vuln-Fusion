@@ -14,6 +14,8 @@ import {
   sanitizeFilename,
   escapeFormulaCell,
 } from '../utils/exportEvidence';
+import { hasPermission, isLastAdministratorChangeBlocked, readPresentationRole, type OrgRole } from '../context/RBACContext';
+import { roleForMissingMembership } from '../services/organizationService';
 
 export function runDataQualityTests(): DataQualityTestResult[] {
   const results: DataQualityTestResult[] = [];
@@ -598,7 +600,7 @@ export function runCriticalScenariosTest(): TestCaseResult[] {
 
 export interface SecurityCheckResult {
   checkName: string;
-  status: 'PASSED' | 'FAILED' | 'NOT TESTED';
+  status: 'PASSED' | 'FAILED' | 'NOT_EXECUTED' | 'NOT TESTED';
   details: string;
 }
 
@@ -606,73 +608,73 @@ export function runSecurityValidationChecks(): SecurityCheckResult[] {
   return [
     {
       checkName: 'Input Validation & Sanitization',
-      status: 'PASSED',
-      details: 'All incoming asset and finding attributes are validated and normalized; malformed IPs, strange characters, and dirty strings are safely handled.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED by this harness. Related normalization behavior is already executed by the data-quality and V18 checks and is not counted again here.'
     },
     {
       checkName: 'Raw Source Attributes Payload Safety',
-      status: 'PASSED',
-      details: 'Oversized rawSourceAttributes maps, malicious HTML/script strings, and unexpected nested object fields are safely parsed without code execution.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not submit an oversized or hostile rawSourceAttributes HTTP payload.'
     },
     {
       checkName: 'Formula Injection Prevention',
-      status: 'PASSED',
-      details: 'Export utilities strictly escape leading formula characters (=, +, -, @, tab) preventing CSV/Excel formula injection.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED in the security list. Formula escaping is already executed by export checks E10 and V15 and is not counted again here.'
     },
     {
       checkName: 'Prototype Pollution Defenses',
-      status: 'PASSED',
-      details: 'Object normalization rejects hazardous keys (__proto__, constructor, prototype) in custom and raw attribute maps.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not send an HTTP body that attempts prototype pollution.'
     },
     {
       checkName: 'Cloud ID & UUID Normalization Safety',
-      status: 'PASSED',
-      details: 'Malformed cloud resource ARNs and BIOS UUID strings are normalized deterministically without regex crashes.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED in the security list. UUID and cloud-id behavior is already executed by the correlation and V1–V4 checks and is not counted again here.'
     },
     {
       checkName: 'Prompt Injection Isolation',
-      status: 'PASSED',
-      details: 'Telemetry payloads and user inputs are strictly isolated from system instructions as unverified data.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not call Gemini or inspect prompt isolation.'
     },
     {
       checkName: 'XSS Safety',
-      status: 'PASSED',
-      details: 'React text node rendering prevents HTML/JS execution; no raw dangerouslySetInnerHTML used for untrusted strings.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not render untrusted markup or probe the DOM for script execution.'
     },
     {
       checkName: 'API Key Isolation',
-      status: 'PASSED',
-      details: 'GEMINI_API_KEY exists exclusively on the server (process.env); zero exposure in frontend client bundle.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not scan the client bundle or server process for GEMINI_API_KEY isolation.'
     },
     {
       checkName: 'Rate Limiting',
-      status: 'PASSED',
-      details: 'In-memory rate limiter active on /api/ai/* endpoints (max 30 requests per minute per IP).'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not send requests to exercise server rate limiting.'
     },
     {
       checkName: 'Payload Limits',
-      status: 'PASSED',
-      details: 'Express JSON body parser bounded to 1MB; oversized requests rejected with 400 status.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not submit a body above the Express JSON limit.'
     },
     {
       checkName: 'AI Failure Handling',
-      status: 'PASSED',
-      details: 'Graceful fallback implemented; deterministic VM analysis remains 100% operational if AI times out or fails.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not time out or fail a live Gemini call. Export checks E9 and E14 cover absent explanation text only and are not counted again here.'
     },
     {
       checkName: 'Deterministic Integrity',
-      status: 'PASSED',
-      details: 'Deterministic engine is sole authority for correlation; AI cannot modify status or evidence.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED in the security list. Correlation status is already executed by the correlation suite and is not counted again here.'
     },
     {
       checkName: 'Exception Integrity',
-      status: 'PASSED',
-      details: 'Analyst actions and exceptions recorded in Session Audit Trail without altering historical source telemetry.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not create an exception or assert the session audit trail.'
     },
     {
       checkName: 'Synthetic Data Compliance',
-      status: 'PASSED',
-      details: 'Explicit synthetic source labels (Qualys, Tenable, Rapid7, Wiz) with prominent disclaimer; zero real credentials or client PII.'
+      status: 'NOT_EXECUTED',
+      details: 'NOT_EXECUTED. This harness does not scan the dataset for real credentials or personal data.'
     }
   ];
 }
@@ -1545,39 +1547,137 @@ export interface RbacValidationTestResult {
 }
 
 export function runRbacValidationTests(): RbacValidationTestResult[] {
-  const results: RbacValidationTestResult[] = [];
-  const testCases = [
-    { id: 'RBAC-01', name: 'Admin Can Read Organization Data', passed: true, details: 'Admin role verified to have read access across all org schemas and tables via RLS & permissions model.' },
-    { id: 'RBAC-02', name: 'Manager Can Read Organization Data', passed: true, details: 'Manager role verified to have read access across operational data and audit trails.' },
-    { id: 'RBAC-03', name: 'User Can Read Organization Data', passed: true, details: 'User role verified to have read-only access to dashboard, assets, findings, and evidence.' },
-    { id: 'RBAC-04', name: 'Admin Can Perform Operational Writes', passed: true, details: 'Admin role authorized for asset modification, correlation decisions, and exception creation.' },
-    { id: 'RBAC-05', name: 'Manager Can Perform Operational Writes', passed: true, details: 'Manager role authorized for operational writes, archiving, and correlation management.' },
-    { id: 'RBAC-06', name: 'User Denied Operational Writes', passed: true, details: 'User role correctly restricted from archiving assets, approving correlations, or modifying records.' },
-    { id: 'RBAC-07', name: 'Admin Can Manage Roles & Members', passed: true, details: 'Admin role authorized to change member roles and remove organization members.' },
-    { id: 'RBAC-08', name: 'Manager Denied Role Management', passed: true, details: 'Manager role correctly blocked from changing roles or managing organization membership.' },
-    { id: 'RBAC-09', name: 'User Denied Role Management', passed: true, details: 'User role correctly blocked from accessing administration tools or modifying roles.' },
-    { id: 'RBAC-10', name: 'Manager Cannot Remove Admin', passed: true, details: 'Authorization rules prevent managers from modifying admin memberships.' },
-    { id: 'RBAC-11', name: 'User Cannot Modify Membership', passed: true, details: 'User role denied any write access to organization_members table via RLS.' },
-    { id: 'RBAC-12', name: 'Last Administrator Protection Enforcement', passed: true, details: 'Server/database logic prevents removing or demoting the last remaining organization administrator.' },
-    { id: 'RBAC-13', name: 'Cross-Organization Role Escalation Denied', passed: true, details: 'Organization-scoped membership and RLS policies prevent role privileges from leaking across tenants.' },
-    { id: 'RBAC-14', name: 'Direct Service/API Write Bypass Denied', passed: true, details: 'Database RLS policies enforce role checks server-side, preventing UI bypass attacks.' },
-    { id: 'RBAC-15', name: 'Manager Administrative Write Denied', passed: true, details: 'Manager role blocked from executing admin-only operations even via direct API calls.' },
-    { id: 'RBAC-16', name: 'Role Changes Generate Audit Events', passed: true, details: 'MEMBER_ROLE_CHANGED and MEMBER_REMOVED events logged successfully to audit trail.' },
-    { id: 'RBAC-17', name: 'Existing Authentication Preserved', passed: true, details: 'Supabase Auth, magic links, Google OAuth, session restoration, and logout operate uninterrupted.' },
-    { id: 'RBAC-18', name: 'Existing RLS Security Preserved', passed: true, details: 'Tenant isolation and security policies remain fully active.' },
-    { id: 'RBAC-19', name: 'Deterministic Correlation Engine Unchanged', passed: true, details: 'Correlation engine mathematics and normalization invariants remain unaltered.' },
-    { id: 'RBAC-20', name: 'Data Synchronization Idempotency Preserved', passed: true, details: 'Sync operations remain fully idempotent with zero duplicate asset creation.' },
+  const unknownRole = 'unassigned' as OrgRole;
+  const soleAdmin = [{ user_id: 'admin-1', role: 'admin' as const }];
+  const twoAdmins = [
+    { user_id: 'admin-1', role: 'admin' as const },
+    { user_id: 'admin-2', role: 'admin' as const },
+  ];
+  const viewer = [{ user_id: 'viewer-1', role: 'user' as const }];
+  const lastAdminBlocked =
+    isLastAdministratorChangeBlocked(soleAdmin, 'admin-1', 'manager') &&
+    isLastAdministratorChangeBlocked(soleAdmin, 'admin-1', 'user') &&
+    isLastAdministratorChangeBlocked(soleAdmin, 'admin-1', null) &&
+    !isLastAdministratorChangeBlocked(twoAdmins, 'admin-1', 'manager') &&
+    !isLastAdministratorChangeBlocked(viewer, 'viewer-1', null);
+
+  const cases: RbacValidationTestResult[] = [
+    {
+      testId: 'RBAC-01',
+      testName: 'Admin Has MANAGE_ROLES',
+      passed: hasPermission('admin', 'MANAGE_ROLES'),
+      details: 'hasPermission(admin, MANAGE_ROLES) is true. Client permission map only.',
+    },
+    {
+      testId: 'RBAC-02',
+      testName: 'Manager Does Not Have MANAGE_ROLES',
+      passed: !hasPermission('manager', 'MANAGE_ROLES'),
+      details: 'hasPermission(manager, MANAGE_ROLES) is false. Client permission map only.',
+    },
+    {
+      testId: 'RBAC-03',
+      testName: 'User Does Not Have MANAGE_ROLES',
+      passed: !hasPermission('user', 'MANAGE_ROLES'),
+      details: 'hasPermission(user, MANAGE_ROLES) is false. Client permission map only.',
+    },
+    {
+      testId: 'RBAC-04',
+      testName: 'Admin Can Manage Correlation',
+      passed: hasPermission('admin', 'MANAGE_CORRELATION'),
+      details: 'hasPermission(admin, MANAGE_CORRELATION) is true. Client permission map only.',
+    },
+    {
+      testId: 'RBAC-05',
+      testName: 'Manager Can Manage Correlation',
+      passed: hasPermission('manager', 'MANAGE_CORRELATION'),
+      details: 'hasPermission(manager, MANAGE_CORRELATION) is true. Client permission map only.',
+    },
+    {
+      testId: 'RBAC-06',
+      testName: 'User Cannot Manage Correlation',
+      passed: !hasPermission('user', 'MANAGE_CORRELATION'),
+      details: 'hasPermission(user, MANAGE_CORRELATION) is false. Client permission map only.',
+    },
+    {
+      testId: 'RBAC-07',
+      testName: 'User Cannot Manage Exceptions',
+      passed: !hasPermission('user', 'CREATE_EXCEPTION'),
+      details: 'hasPermission(user, CREATE_EXCEPTION) is false. Exception create and revoke use this permission.',
+    },
+    {
+      testId: 'RBAC-08',
+      testName: 'User Cannot Manage Lifecycle',
+      passed: !hasPermission('user', 'ARCHIVE_ASSET') && !hasPermission('user', 'REACTIVATE_ASSET'),
+      details: 'hasPermission(user, ARCHIVE_ASSET) and REACTIVATE_ASSET are false. Lifecycle policy updates use ARCHIVE_ASSET.',
+    },
+    {
+      testId: 'RBAC-09',
+      testName: 'User Cannot Remove Members',
+      passed: !hasPermission('user', 'REMOVE_MEMBERS'),
+      details: 'hasPermission(user, REMOVE_MEMBERS) is false. Client permission map only.',
+    },
+    {
+      testId: 'RBAC-10',
+      testName: 'Last Administrator Protection',
+      passed: lastAdminBlocked,
+      details: lastAdminBlocked
+        ? 'isLastAdministratorChangeBlocked denies demotion and removal of the only administrator, and allows demotion when a second administrator exists. This is an in-memory guard, not a database policy.'
+        : 'Last-administrator guard returned an unexpected result.',
+    },
+    {
+      testId: 'RBAC-11',
+      testName: 'Manager Keeps Analyst Operations And Cannot Remove Members',
+      passed:
+        hasPermission('manager', 'ARCHIVE_ASSET') &&
+        hasPermission('manager', 'REACTIVATE_ASSET') &&
+        hasPermission('manager', 'CREATE_EXCEPTION') &&
+        !hasPermission('manager', 'REMOVE_MEMBERS'),
+      details: 'Manager has ARCHIVE_ASSET, REACTIVATE_ASSET, and CREATE_EXCEPTION, and does not have REMOVE_MEMBERS.',
+    },
+    {
+      testId: 'RBAC-12',
+      testName: 'Unrecognized Role Stays Least Privileged',
+      passed: !hasPermission(unknownRole, 'MANAGE_ROLES') && !hasPermission(unknownRole, 'MANAGE_CORRELATION'),
+      details: 'A role missing from the permission map uses the user permission set and does not receive MANAGE_ROLES or MANAGE_CORRELATION.',
+    },
+    {
+      testId: 'RBAC-13',
+      testName: 'Viewer Cannot Simulate Observation',
+      passed: !hasPermission('user', 'SYNC_DATA'),
+      details: 'Simulated observation ingest uses SYNC_DATA. hasPermission(user, SYNC_DATA) is false.',
+    },
+    {
+      testId: 'RBAC-14',
+      testName: 'Administrator Can Simulate Observation',
+      passed: hasPermission('admin', 'SYNC_DATA'),
+      details: 'Simulated observation ingest uses SYNC_DATA. hasPermission(admin, SYNC_DATA) is true.',
+    },
+    {
+      testId: 'RBAC-15',
+      testName: 'Security Ops Can Simulate Observation',
+      passed: hasPermission('manager', 'SYNC_DATA'),
+      details: 'SYNC_DATA is an existing manager operational permission. hasPermission(manager, SYNC_DATA) is true.',
+    },
+    {
+      testId: 'RBAC-16',
+      testName: 'Missing Real Membership Cannot Produce Admin',
+      passed:
+        roleForMissingMembership(0) === 'user' &&
+        roleForMissingMembership(null) === 'user' &&
+        roleForMissingMembership(undefined) === 'user',
+      details: 'roleForMissingMembership returns user when the organization has zero members, a null count, or an unknown count. This does not query PostgreSQL.',
+    },
+    {
+      testId: 'RBAC-17',
+      testName: 'Presentation Session Keeps Explicit Admin',
+      passed:
+        readPresentationRole({ user_metadata: { is_demo_session: true, role: 'admin' } }, true) === 'admin' &&
+        readPresentationRole({ user_metadata: { role: 'admin' } }, true) === null &&
+        readPresentationRole(null, false) === null,
+      details: 'readPresentationRole returns admin only for an explicit demo presentation session. A metadata role without is_demo_session does not grant admin.',
+    },
   ];
 
-  testCases.forEach(tc => {
-    results.push({
-      testId: tc.id,
-      testName: tc.name,
-      passed: tc.passed,
-      details: tc.details,
-    });
-  });
-
-  return results;
+  return cases;
 }
 

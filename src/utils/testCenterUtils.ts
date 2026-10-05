@@ -9,7 +9,7 @@ import {
 } from '../engine/testRunner';
 
 export type TestCategory = 'DATA' | 'CORRELATION' | 'LIFECYCLE' | 'SECURITY' | 'RBAC' | 'EXPORT' | 'SYSTEM';
-export type TestStatus = 'PASSED' | 'FAILED' | 'REVIEW' | 'SKIPPED';
+export type TestStatus = 'PASSED' | 'FAILED' | 'REVIEW' | 'SKIPPED' | 'NOT_EXECUTED';
 
 export interface UnifiedTestItem {
   id: string;
@@ -34,18 +34,23 @@ export interface CategorySummary {
   label: string;
   iconName: string;
   passedCount: number;
+  failedCount: number;
+  executedCount: number;
+  notExecutedCount: number;
   totalCount: number;
   passPercentage: number;
-  status: 'HEALTHY' | 'NEEDS_ATTENTION' | 'FAILED';
+  status: 'HEALTHY' | 'NEEDS_ATTENTION' | 'FAILED' | 'NOT_EXECUTED';
   durationMs: number;
 }
 
 export interface TestExecutionSnapshot {
   tests: UnifiedTestItem[];
   totalCount: number;
+  executedCount: number;
   passedCount: number;
   failedCount: number;
   reviewCount: number;
+  notExecutedCount: number;
   allPassed: boolean;
   durationMs: number;
   timestamp: string;
@@ -155,22 +160,23 @@ export function executeUnifiedTestSuite(): TestExecutionSnapshot {
     });
   });
 
-  // 5. SECURITY VALIDATION TESTS (14 tests)
+  // 5. SECURITY VALIDATION CHECKS — executed only when the harness actually probes the control
   secResults.forEach((test, idx) => {
-    const isPassed = test.status === 'PASSED';
+    const status: TestStatus =
+      test.status === 'PASSED' ? 'PASSED' : test.status === 'FAILED' ? 'FAILED' : 'NOT_EXECUTED';
     unifiedTests.push({
       id: `SEC-${String(idx + 1).padStart(2, '0')}`,
       name: test.checkName,
       category: 'SECURITY',
       categoryLabel: 'Security Controls & AI Boundary',
-      description: `Verifies active security enforcement for ${test.checkName}.`,
-      status: isPassed ? 'PASSED' : 'FAILED',
-      passed: isPassed,
-      expected: 'Security control ACTIVE and zero attack-surface compromise',
+      description: `Records whether this harness executed ${test.checkName}.`,
+      status,
+      passed: status === 'PASSED',
+      expected: 'An executed probe, or NOT_EXECUTED when this harness cannot run the control',
       actual: test.details,
       details: test.details,
-      evidenceSnippet: `Security perimeter audit: ${test.details}`,
-      durationMs: 6 + (idx * 4) % 8,
+      evidenceSnippet: test.details,
+      durationMs: status === 'NOT_EXECUTED' ? 0 : 6 + (idx * 4) % 8,
       runId,
       timestamp,
     });
@@ -184,10 +190,10 @@ export function executeUnifiedTestSuite(): TestExecutionSnapshot {
       name: test.testName,
       category: 'RBAC',
       categoryLabel: 'Enterprise RBAC 1.0 Authorization',
-      description: `Validates role-based access control, role hierarchy, permission enforcement, and last-admin protection (${test.testId}).`,
+      description: `Checks the client permission map and last-administrator guard (${test.testId}).`,
       status: isPassed ? 'PASSED' : 'FAILED',
       passed: isPassed,
-      expected: 'Strict role authorization enforced at database and application layers',
+      expected: 'Client hasPermission or last-administrator guard matches the stated role rule',
       actual: test.details,
       details: test.details,
       evidenceSnippet: `RBAC verification engine: ${test.details}`,
@@ -245,10 +251,13 @@ export function executeUnifiedTestSuite(): TestExecutionSnapshot {
 
   categories.forEach((cat) => {
     const catTests = unifiedTests.filter((t) => t.category === cat);
-    const passed = catTests.filter((t) => t.passed).length;
+    const passed = catTests.filter((t) => t.status === 'PASSED').length;
+    const failed = catTests.filter((t) => t.status === 'FAILED').length;
+    const notExecuted = catTests.filter((t) => t.status === 'NOT_EXECUTED').length;
     const total = catTests.length;
-    const passPercentage = total > 0 ? Math.round((passed / total) * 100) : 100;
-    const hasFails = catTests.some((t) => t.status === 'FAILED');
+    const executed = catTests.filter((t) => t.status !== 'NOT_EXECUTED' && t.status !== 'SKIPPED').length;
+    const passPercentage = executed > 0 ? Math.round((passed / executed) * 100) : 0;
+    const hasFails = failed > 0;
     const hasReviews = catTests.some((t) => t.status === 'REVIEW');
 
     categorySummaries[cat] = {
@@ -256,25 +265,32 @@ export function executeUnifiedTestSuite(): TestExecutionSnapshot {
       label: categoryLabels[cat],
       iconName: categoryIcons[cat],
       passedCount: passed,
+      failedCount: failed,
+      executedCount: executed,
+      notExecutedCount: notExecuted,
       totalCount: total,
       passPercentage,
-      status: hasFails ? 'FAILED' : hasReviews ? 'NEEDS_ATTENTION' : 'HEALTHY',
+      status: hasFails ? 'FAILED' : hasReviews ? 'NEEDS_ATTENTION' : notExecuted > 0 ? 'NOT_EXECUTED' : 'HEALTHY',
       durationMs: catTests.reduce((sum, t) => sum + t.durationMs, 0),
     };
   });
 
   const totalCount = unifiedTests.length;
-  const passedCount = unifiedTests.filter((t) => t.passed).length;
+  const passedCount = unifiedTests.filter((t) => t.status === 'PASSED').length;
   const failedCount = unifiedTests.filter((t) => t.status === 'FAILED').length;
   const reviewCount = unifiedTests.filter((t) => t.status === 'REVIEW').length;
+  const notExecutedCount = unifiedTests.filter((t) => t.status === 'NOT_EXECUTED').length;
+  const executedCount = unifiedTests.filter((t) => t.status !== 'NOT_EXECUTED' && t.status !== 'SKIPPED').length;
 
   return {
     tests: unifiedTests,
     totalCount,
+    executedCount,
     passedCount,
     failedCount,
     reviewCount,
-    allPassed: passedCount === totalCount,
+    notExecutedCount,
+    allPassed: failedCount === 0 && reviewCount === 0 && notExecutedCount === 0 && passedCount === totalCount,
     durationMs: totalDurationMs,
     timestamp,
     runId,

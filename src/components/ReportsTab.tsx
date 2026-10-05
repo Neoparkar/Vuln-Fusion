@@ -79,16 +79,16 @@ export const ReportsTab: React.FC<ReportsTabProps> = ({
       title: 'Automated Integrity & Verification Suite',
       category: 'Compliance & Audit Assurance',
       description:
-        'Comprehensive audit log covering 118 deterministic validation assertions across IP resolution, UUID matching, and AI authority boundaries.',
-      badge: '118/118 Passing',
+        'Audit log of the in-app validation suite. Passed, failed, and not-executed results stay separate. Rows that this harness does not run are not counted as passes.',
+      badge: `${testSnapshot.passedCount}/${testSnapshot.executedCount} executed`,
       badgeColor: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
       formats: ['PDF', 'CSV', 'JSON', 'HTML', 'MARKDOWN'],
       primaryAction: () => setIsTestExportOpen(true),
       actionLabel: 'Export Test Suite Report',
       kpis: [
-        { label: 'Total Assertions', value: testSnapshot.totalCount },
-        { label: 'Passing Rate', value: '100%' },
-        { label: 'Execution Time', value: '< 45ms' },
+        { label: 'Executed', value: testSnapshot.executedCount },
+        { label: 'Passed', value: testSnapshot.passedCount },
+        { label: 'Not Executed', value: testSnapshot.notExecutedCount },
       ],
     },
   ];

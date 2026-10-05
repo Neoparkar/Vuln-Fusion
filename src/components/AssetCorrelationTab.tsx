@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useRBAC } from '../context/RBACContext';
 import {
   UnderlyingAsset,
   AssetRecord,
@@ -78,6 +79,10 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
   externalSearchQuery = '',
   initialAssetGroupId = '',
 }) => {
+  const { can } = useRBAC();
+  const canManageCorrelation = can('MANAGE_CORRELATION');
+  const canCreateException = can('CREATE_EXCEPTION');
+  const deniedTitle = 'Unavailable for your role';
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'ALL' | 'CORRELATED' | 'REVIEW_REQUIRED' | 'SEPARATE'>('ALL');
   const [sortOrder, setSortOrder] = useState<'name' | 'records'>('name');
@@ -642,7 +647,9 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
                 <button
                   type="button"
                   onClick={() => onAcceptCorrelation(selectedCluster.underlyingAssetId)}
-                  className="py-2.5 px-3 bg-emerald-950/20 hover:bg-emerald-900/30 text-emerald-300 border border-emerald-500/30 rounded-xl font-semibold transition flex items-center justify-center gap-1.5 min-h-[44px]"
+                  disabled={!canManageCorrelation}
+                  title={canManageCorrelation ? 'Accept deterministic correlation' : deniedTitle}
+                  className={`py-2.5 px-3 bg-emerald-950/20 hover:bg-emerald-900/30 text-emerald-300 border border-emerald-500/30 rounded-xl font-semibold transition flex items-center justify-center gap-1.5 min-h-[44px] ${canManageCorrelation ? '' : 'opacity-40 cursor-not-allowed'}`}
                 >
                   <Check className="w-4 h-4 text-emerald-400" /> Accept
                 </button>
@@ -918,8 +925,9 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
                   <button
                     type="button"
                     onClick={() => onAcceptCorrelation(selectedCluster.underlyingAssetId)}
-                    className="px-3.5 py-1.5 bg-[#10B981]/20 hover:bg-[#10B981]/30 text-[#10B981] border border-[#10B981]/40 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-sm"
-                    title="Accept deterministic correlation"
+                    disabled={!canManageCorrelation}
+                    className={`px-3.5 py-1.5 bg-[#10B981]/20 hover:bg-[#10B981]/30 text-[#10B981] border border-[#10B981]/40 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 shadow-sm ${canManageCorrelation ? '' : 'opacity-40 cursor-not-allowed'}`}
+                    title={canManageCorrelation ? 'Accept deterministic correlation' : deniedTitle}
                   >
                     <Check className="w-3.5 h-3.5" />
                     <span>Accept Correlation</span>
@@ -928,8 +936,9 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
                   <button
                     type="button"
                     onClick={() => onRejectCorrelation(selectedCluster.underlyingAssetId)}
-                    className="px-3.5 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold transition flex items-center gap-1.5"
-                    title="Reject correlation hypothesis"
+                    disabled={!canManageCorrelation}
+                    className={`px-3.5 py-1.5 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${canManageCorrelation ? '' : 'opacity-40 cursor-not-allowed'}`}
+                    title={canManageCorrelation ? 'Reject correlation hypothesis' : deniedTitle}
                   >
                     <X className="w-3.5 h-3.5" />
                     <span>Reject Correlation</span>
@@ -976,8 +985,9 @@ export const AssetCorrelationTab: React.FC<AssetCorrelationTabProps> = ({
                   <button
                     type="button"
                     onClick={() => onCreateException(selectedCluster)}
-                    className="px-3 py-1.5 bg-[#10141A] hover:bg-[#181E26] text-[#F59E0B] border border-[#1B2430] rounded-lg text-xs font-medium transition flex items-center gap-1.5"
-                    title="Create correlation exception"
+                    disabled={!canCreateException}
+                    className={`px-3 py-1.5 bg-[#10141A] hover:bg-[#181E26] text-[#F59E0B] border border-[#1B2430] rounded-lg text-xs font-medium transition flex items-center gap-1.5 ${canCreateException ? '' : 'opacity-40 cursor-not-allowed'}`}
+                    title={canCreateException ? 'Create correlation exception' : deniedTitle}
                   >
                     <ShieldAlert className="w-3.5 h-3.5 text-[#F59E0B]" />
                     <span>Create Exception</span>

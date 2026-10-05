@@ -114,6 +114,35 @@ const PERMISSIONS_MAP: Record<OrgRole, Permission[]> = {
   ],
 };
 
+export function hasPermission(role: OrgRole, permission: Permission): boolean {
+  const allowedPermissions = PERMISSIONS_MAP[role] || PERMISSIONS_MAP.user;
+  return allowedPermissions.includes(permission);
+}
+
+export function isLastAdministratorChangeBlocked(
+  members: { user_id: string; role: OrgRole }[],
+  targetUserId: string,
+  nextRole: OrgRole | null
+): boolean {
+  const target = members.find(member => member.user_id === targetUserId);
+  if (!target || target.role !== 'admin') return false;
+  if (nextRole === 'admin') return false;
+  const adminCount = members.filter(member => member.role === 'admin').length;
+  return adminCount <= 1;
+}
+
+export function readPresentationRole(user: { user_metadata?: Record<string, unknown> } | null, isDemoMode: boolean): OrgRole | null {
+  if (!isDemoMode || user?.user_metadata?.is_demo_session !== true) return null;
+  const role = user.user_metadata.role;
+  if (role === 'admin' || role === 'manager' || role === 'user') return role;
+  return 'user';
+}
+
+function readMembershipRole(role: unknown): OrgRole {
+  if (role === 'admin' || role === 'manager' || role === 'user') return role;
+  return 'user';
+}
+
 const DEFAULT_ENTERPRISE_ROSTER: OrganizationMember[] = [
   {
     id: 'mem-admin-01',
@@ -151,14 +180,24 @@ const DEFAULT_ENTERPRISE_ROSTER: OrganizationMember[] = [
 ];
 
 export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { currentUser, isAuthenticated } = useAuth();
-  const [role, setRole] = useState<OrgRole>('admin');
+  const { currentUser, isDemoMode } = useAuth();
+  const [role, setRole] = useState<OrgRole>('user');
+  const presentationRole = readPresentationRole(currentUser, isDemoMode);
+  const effectiveRole: OrgRole = presentationRole ?? role;
   const [members, setMembers] = useState<OrganizationMember[]>(DEFAULT_ENTERPRISE_ROSTER);
   const [isLoadingMembers, setIsLoadingMembers] = useState<boolean>(false);
 
   const fetchMembershipAndMembers = async () => {
+    const presentationRole = readPresentationRole(currentUser, isDemoMode);
+    if (presentationRole) {
+      setRole(presentationRole);
+      setMembers(DEFAULT_ENTERPRISE_ROSTER);
+      setIsLoadingMembers(false);
+      return;
+    }
+
     if (!isSupabaseConfigured || !currentUser) {
-      setRole('admin');
+      setRole('user');
       setMembers(DEFAULT_ENTERPRISE_ROSTER);
       return;
     }
@@ -174,9 +213,9 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .maybeSingle();
 
       if (!myError && myMember) {
-        setRole((myMember.role as OrgRole) || 'admin');
+        setRole(readMembershipRole(myMember.role));
       } else {
-        setRole('admin');
+        setRole('user');
       }
 
       // 2. Fetch all members for admin/manager view
@@ -192,6 +231,7 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     } catch (err) {
       console.error('Error fetching RBAC membership:', err);
+      setRole('user');
       setMembers(DEFAULT_ENTERPRISE_ROSTER);
     } finally {
       setIsLoadingMembers(false);
@@ -200,30 +240,25 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     fetchMembershipAndMembers();
-  }, [currentUser]);
+  }, [currentUser, isDemoMode]);
 
-  const can = (permission: Permission): boolean => {
-    const allowedPermissions = PERMISSIONS_MAP[role] || PERMISSIONS_MAP['user'];
-    return allowedPermissions.includes(permission);
-  };
+  const can = (permission: Permission): boolean => hasPermission(effectiveRole, permission);
 
   const updateMemberRole = async (targetUserId: string, newRole: OrgRole): Promise<boolean> => {
-    // Last admin protection check
-    const currentMember = members.find(m => m.user_id === targetUserId);
-    if (currentMember?.role === 'admin' && newRole !== 'admin') {
-      const adminCount = members.filter(m => m.role === 'admin').length;
-      if (adminCount <= 1) {
-        console.error('Cannot demote the last administrator.');
-        return false;
-      }
+    if (!can('MANAGE_ROLES')) return false;
+    if (isLastAdministratorChangeBlocked(members, targetUserId, newRole)) {
+      console.error('Cannot demote the last administrator.');
+      return false;
     }
 
-    if (!isSupabaseConfigured || !currentUser) {
+    if (isDemoMode) {
       setMembers(prev =>
         prev.map(m => (m.user_id === targetUserId ? { ...m, role: newRole } : m))
       );
       return true;
     }
+
+    if (!isSupabaseConfigured || !currentUser) return false;
 
     try {
       const { error } = await supabase
@@ -233,11 +268,8 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('user_id', targetUserId);
 
       if (error) {
-        console.warn('Supabase update error, applying locally:', error.message);
-        setMembers(prev =>
-          prev.map(m => (m.user_id === targetUserId ? { ...m, role: newRole } : m))
-        );
-        return true;
+        console.warn('Supabase update denied; local roster was not changed:', error.message);
+        return false;
       }
 
       await auditService.logEvent(
@@ -253,28 +285,23 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (err) {
       console.error('Error updating member role:', err);
-      setMembers(prev =>
-        prev.map(m => (m.user_id === targetUserId ? { ...m, role: newRole } : m))
-      );
-      return true;
+      return false;
     }
   };
 
   const removeMember = async (targetUserId: string): Promise<boolean> => {
-    // Last admin protection check
-    const targetMember = members.find(m => m.user_id === targetUserId);
-    if (targetMember?.role === 'admin') {
-      const adminCount = members.filter(m => m.role === 'admin').length;
-      if (adminCount <= 1) {
-        console.error('Cannot remove the last administrator.');
-        return false;
-      }
+    if (!can('REMOVE_MEMBERS')) return false;
+    if (isLastAdministratorChangeBlocked(members, targetUserId, null)) {
+      console.error('Cannot remove the last administrator.');
+      return false;
     }
 
-    if (!isSupabaseConfigured || !currentUser) {
+    if (isDemoMode) {
       setMembers(prev => prev.filter(m => m.user_id !== targetUserId));
       return true;
     }
+
+    if (!isSupabaseConfigured || !currentUser) return false;
 
     try {
       const { error } = await supabase
@@ -284,9 +311,8 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
         .eq('user_id', targetUserId);
 
       if (error) {
-        console.warn('Supabase delete error, applying locally:', error.message);
-        setMembers(prev => prev.filter(m => m.user_id !== targetUserId));
-        return true;
+        console.warn('Supabase delete denied; local roster was not changed:', error.message);
+        return false;
       }
 
       await auditService.logEvent(
@@ -302,16 +328,15 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     } catch (err) {
       console.error('Error removing member:', err);
-      setMembers(prev => prev.filter(m => m.user_id !== targetUserId));
-      return true;
+      return false;
     }
   };
 
   const value = {
-    role,
-    isAdmin: role === 'admin',
-    isManager: role === 'manager',
-    isUser: role === 'user',
+    role: effectiveRole,
+    isAdmin: effectiveRole === 'admin',
+    isManager: effectiveRole === 'manager',
+    isUser: effectiveRole === 'user',
     can,
     members,
     isLoadingMembers,

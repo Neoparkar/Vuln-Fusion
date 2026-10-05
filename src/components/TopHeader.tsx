@@ -38,7 +38,7 @@ interface TopHeaderProps {
   totalRecords: number;
   totalAssetGroups: number;
   totalFindings: number;
-  totalTests?: number;
+  verificationBadge?: string;
   onOpenAIAnalyst?: () => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
@@ -57,7 +57,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
   activeTab,
   setActiveTab,
   reviewCount,
-  totalTests = 118,
+  verificationBadge = '—',
   onOpenAIAnalyst,
   searchQuery,
   setSearchQuery,
@@ -266,7 +266,7 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
       label: 'Test Suite',
       subtitle: 'Automated Integrity & Verification',
       icon: TestCommandCenterIcon,
-      badge: `${totalTests}`,
+      badge: verificationBadge,
       section: 'SYSTEM',
     },
   ];

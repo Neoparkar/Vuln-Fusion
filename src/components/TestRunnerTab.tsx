@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  CircleDashed,
   Play,
   RotateCw,
   Download,
@@ -83,14 +84,14 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
       id: 'act-1',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       title: 'Full deterministic validation completed',
-      summary: `${snapshot.passedCount} / ${snapshot.totalCount} passed (${(snapshot.durationMs / 1000).toFixed(1)}s)`,
+      summary: `${snapshot.passedCount} / ${snapshot.executedCount} executed passed, ${snapshot.notExecutedCount} not executed (${(snapshot.durationMs / 1000).toFixed(1)}s)`,
       type: 'FULL',
     },
     {
       id: 'act-2',
       time: new Date(Date.now() - 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-      title: 'Security controls & AI boundary verified',
-      summary: '14 / 14 controls active with zero leakage',
+      title: 'Security control list recorded',
+      summary: `${snapshot.categorySummaries.SECURITY.notExecutedCount} security checks not executed by this harness`,
       type: 'CATEGORY',
     },
     {
@@ -131,7 +132,7 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
             id: `act-${Date.now()}`,
             time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
             title: 'Manual test suite execution completed',
-            summary: `${newSnapshot.passedCount} / ${newSnapshot.totalCount} passed (${(newSnapshot.durationMs / 1000).toFixed(1)}s)`,
+            summary: `${newSnapshot.passedCount} / ${newSnapshot.executedCount} executed passed, ${newSnapshot.notExecutedCount} not executed (${(newSnapshot.durationMs / 1000).toFixed(1)}s)`,
             type: 'FULL',
           },
           ...prev.slice(0, 4),
@@ -226,7 +227,10 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
     { category: 'SYSTEM', title: 'System Invariants', subtitle: 'Multi-Pass Determinism', stageIndex: 6 },
   ];
 
-  const overallPassRate = Math.round((snapshot.passedCount / snapshot.totalCount) * 100);
+  const overallPassRate = snapshot.executedCount > 0
+    ? Math.round((snapshot.passedCount / snapshot.executedCount) * 100)
+    : 0;
+  const hasExecutionIssues = snapshot.failedCount > 0 || snapshot.reviewCount > 0;
 
   return (
     <div className="space-y-6 animate-fadeIn font-sans pb-12">
@@ -259,7 +263,7 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
                   cx="38"
                   cy="38"
                   r="32"
-                  stroke={snapshot.allPassed ? '#10B981' : '#F59E0B'}
+                  stroke={hasExecutionIssues ? '#F59E0B' : '#10B981'}
                   strokeWidth="6"
                   strokeDasharray={201}
                   strokeDashoffset={201 - (201 * overallPassRate) / 100}
@@ -274,7 +278,7 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
                   {overallPassRate}%
                 </span>
                 <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider mt-0.5">
-                  PASS
+                  EXECUTED
                 </span>
               </div>
             </div>
@@ -286,10 +290,13 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
                   <Activity className="w-3.5 h-3.5" /> Validation Control Center
                 </span>
                 <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold font-mono">
-                  {snapshot.passedCount} / {snapshot.totalCount} PASS
+                  {snapshot.passedCount} / {snapshot.executedCount} PASSED
                 </span>
-                <span className="text-xs text-emerald-400 font-semibold hidden sm:inline">
-                  • ALL VALIDATIONS HEALTHY
+                <span className="px-2.5 py-0.5 rounded-full bg-slate-500/10 border border-slate-500/30 text-slate-300 text-xs font-bold font-mono">
+                  {snapshot.notExecutedCount} NOT EXECUTED
+                </span>
+                <span className={`text-xs font-semibold hidden sm:inline ${snapshot.failedCount > 0 ? 'text-rose-400' : 'text-slate-400'}`}>
+                  • {snapshot.failedCount} FAILED
                 </span>
               </div>
 
@@ -371,7 +378,9 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
         {(['DATA', 'CORRELATION', 'SECURITY', 'EXPORT', 'SYSTEM'] as TestCategory[]).map(cat => {
           const summary = snapshot.categorySummaries[cat];
           const isSelected = activeCategory === cat;
-          const isAllPass = summary.passedCount === summary.totalCount;
+          const isNotRun = summary.notExecutedCount === summary.totalCount && summary.totalCount > 0;
+          const isAllPass = summary.failedCount === 0 && summary.notExecutedCount === 0 && summary.executedCount > 0 && summary.passedCount === summary.executedCount;
+          const tileBadge = summary.failedCount > 0 ? 'FAIL' : isNotRun ? 'NOT RUN' : isAllPass ? 'PASS' : 'REVIEW';
 
           return (
             <button
@@ -391,12 +400,16 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
 
                 <span
                   className={`px-2 py-0.5 rounded text-[10px] font-bold font-mono ${
-                    isAllPass
+                    summary.failedCount > 0
+                      ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                      : isNotRun
+                      ? 'bg-slate-500/10 text-slate-300 border border-slate-500/30'
+                      : isAllPass
                       ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                       : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
                   }`}
                 >
-                  {isAllPass ? 'PASS' : 'REVIEW'}
+                  {tileBadge}
                 </span>
               </div>
 
@@ -406,7 +419,11 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
                   {summary.label}
                 </div>
                 <div className="text-lg font-extrabold text-slate-100 font-mono mt-0.5">
-                  {summary.passedCount} <span className="text-xs text-[#64748B] font-normal">/ {summary.totalCount}</span>
+                  {isNotRun ? (
+                    <>{summary.notExecutedCount} <span className="text-xs text-[#64748B] font-normal">not executed</span></>
+                  ) : (
+                    <>{summary.passedCount} <span className="text-xs text-[#64748B] font-normal">/ {summary.executedCount} executed</span></>
+                  )}
                 </div>
               </div>
 
@@ -415,13 +432,13 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
                 <div className="w-full bg-[#1A222D] rounded-full h-1 overflow-hidden">
                   <div
                     className={`h-1 rounded-full transition-all duration-300 ${
-                      isAllPass ? 'bg-emerald-400' : 'bg-amber-400'
+                      summary.failedCount > 0 ? 'bg-rose-400' : isAllPass ? 'bg-emerald-400' : isNotRun ? 'bg-slate-500' : 'bg-amber-400'
                     }`}
-                    style={{ width: `${summary.passPercentage}%` }}
+                    style={{ width: `${isNotRun ? 0 : summary.passPercentage}%` }}
                   />
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-[#64748B] font-mono">
-                  <span>{summary.passPercentage}% validated</span>
+                  <span>{isNotRun ? `${summary.notExecutedCount} not executed` : `${summary.passPercentage}% of executed`}</span>
                   <span>{summary.durationMs}ms</span>
                 </div>
               </div>
@@ -466,7 +483,13 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
                     <span className="text-[10px] font-bold text-[#64748B] uppercase tracking-wider font-mono">
                       STAGE 0{stage.stageIndex}
                     </span>
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    {summary.notExecutedCount === summary.totalCount && summary.totalCount > 0 ? (
+                      <CircleDashed className="w-3.5 h-3.5 text-slate-400" />
+                    ) : summary.failedCount > 0 ? (
+                      <XCircle className="w-3.5 h-3.5 text-rose-400" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                    )}
                   </div>
 
                   <div>
@@ -479,8 +502,14 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
                   </div>
 
                   <div className="pt-2 border-t border-[#1C232E] flex items-center justify-between text-[10px] font-mono text-[#64748B]">
-                    <span>{summary.passedCount}/{summary.totalCount} tests</span>
-                    <span className="text-emerald-400 font-bold">100%</span>
+                    <span>
+                      {summary.notExecutedCount === summary.totalCount
+                        ? `${summary.notExecutedCount} not executed`
+                        : `${summary.passedCount}/${summary.executedCount} executed`}
+                    </span>
+                    <span className={summary.failedCount > 0 ? 'text-rose-400 font-bold' : summary.notExecutedCount === summary.totalCount ? 'text-slate-400 font-bold' : 'text-emerald-400 font-bold'}>
+                      {summary.notExecutedCount === summary.totalCount ? '—' : `${summary.passPercentage}%`}
+                    </span>
                   </div>
                 </button>
 
@@ -498,29 +527,7 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
 
       {/* 4. ATTENTION STATE */}
       <div className="bg-[#10141A] border border-[#1A222D] rounded-2xl p-4 sm:p-5 shadow-sm">
-        {snapshot.allPassed ? (
-          <div className="flex items-center justify-between flex-wrap gap-4 text-sm">
-            <div className="flex items-center gap-3">
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
-                <CheckCircle2 className="w-5 h-5" />
-              </div>
-              <div>
-                <strong className="text-slate-100 text-sm sm:text-base block font-bold">
-                  All Validations Healthy — {snapshot.passedCount} / {snapshot.totalCount} Tests Passed
-                </strong>
-                <span className="text-xs text-[#94A3B8]">
-                  Deterministic stability, correlation engine invariants, export evidence structure, and security boundaries verified.
-                </span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="px-3 py-1 rounded-xl bg-[#151A21] border border-[#1E2631] text-emerald-400 font-mono font-bold text-xs">
-                Zero Failures Detected
-              </span>
-            </div>
-          </div>
-        ) : (
+        {hasExecutionIssues ? (
           <div className="flex items-center justify-between flex-wrap gap-4 text-sm bg-rose-500/5 p-3 rounded-xl border border-rose-500/20">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
@@ -528,10 +535,10 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
               </div>
               <div>
                 <strong className="text-rose-200 text-sm sm:text-base block font-bold">
-                  Validation Requires Attention — {snapshot.failedCount} Failed / {snapshot.reviewCount} Review
+                  Validation Requires Attention — {snapshot.failedCount} Failed / {snapshot.reviewCount} Review / {snapshot.notExecutedCount} Not Executed
                 </strong>
                 <span className="text-xs text-rose-300/80">
-                  Some assertions returned unexpected states. Review highlighted tests below.
+                  Failed and review results are separate from checks this harness did not execute.
                 </span>
               </div>
             </div>
@@ -542,6 +549,47 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
             >
               View Issues
             </button>
+          </div>
+        ) : snapshot.notExecutedCount > 0 ? (
+          <div className="flex items-center justify-between flex-wrap gap-4 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-slate-500/10 border border-slate-500/20 text-slate-300 flex items-center justify-center shrink-0">
+                <CircleDashed className="w-5 h-5" />
+              </div>
+              <div>
+                <strong className="text-slate-100 text-sm sm:text-base block font-bold">
+                  {snapshot.passedCount} / {snapshot.executedCount} Executed Checks Passed — {snapshot.notExecutedCount} Not Executed
+                </strong>
+                <span className="text-xs text-[#94A3B8]">
+                  Not-executed rows were not run. They are not counted as passed or failed.
+                </span>
+              </div>
+            </div>
+            <span className="px-3 py-1 rounded-xl bg-[#151A21] border border-[#1E2631] text-slate-300 font-mono font-bold text-xs">
+              {snapshot.failedCount} Failed
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between flex-wrap gap-4 text-sm">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                <CheckCircle2 className="w-5 h-5" />
+              </div>
+              <div>
+                <strong className="text-slate-100 text-sm sm:text-base block font-bold">
+                  All Executed Checks Passed — {snapshot.passedCount} / {snapshot.executedCount}
+                </strong>
+                <span className="text-xs text-[#94A3B8]">
+                  Every check in this run was executed, and none failed.
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="px-3 py-1 rounded-xl bg-[#151A21] border border-[#1E2631] text-emerald-400 font-mono font-bold text-xs">
+                {snapshot.failedCount} Failed · {snapshot.notExecutedCount} Not Executed
+              </span>
+            </div>
           </div>
         )}
       </div>
@@ -648,7 +696,7 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
             <span className="text-[#64748B] text-[11px] font-bold uppercase tracking-wider mr-1">
               Status:
             </span>
-            {(['ALL', 'PASSED', 'FAILED', 'REVIEW'] as const).map(st => (
+            {(['ALL', 'PASSED', 'FAILED', 'REVIEW', 'NOT_EXECUTED'] as const).map(st => (
               <button
                 key={st}
                 onClick={() => setStatusFilter(st)}
@@ -698,7 +746,6 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
             <div className="space-y-2 max-h-[600px] overflow-y-auto pr-1">
               {filteredTests.map((test) => {
                 const isSelected = selectedTest?.id === test.id;
-                const isPass = test.passed;
 
                 return (
                   <div
@@ -713,10 +760,12 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
                     {/* Left: Status icon in subtle container (32px) + ID + Name + Description */}
                     <div className="flex items-start sm:items-center gap-3 flex-1 min-w-0">
                       <div className="w-8 h-8 rounded-lg bg-[#10141A] border border-[#1E2631] flex items-center justify-center shrink-0 mt-0.5 sm:mt-0">
-                        {isPass ? (
+                        {test.status === 'PASSED' ? (
                           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
                         ) : test.status === 'REVIEW' ? (
                           <AlertTriangle className="w-4 h-4 text-amber-400" />
+                        ) : test.status === 'NOT_EXECUTED' ? (
+                          <CircleDashed className="w-4 h-4 text-slate-400" />
                         ) : (
                           <XCircle className="w-4 h-4 text-rose-400" />
                         )}
@@ -748,10 +797,12 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
 
                       <span
                         className={`px-2.5 py-0.5 rounded-lg text-xs font-bold font-mono ${
-                          isPass
+                          test.status === 'PASSED'
                             ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
                             : test.status === 'REVIEW'
                             ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                            : test.status === 'NOT_EXECUTED'
+                            ? 'bg-slate-500/10 text-slate-300 border border-slate-500/30'
                             : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
                         }`}
                       >
@@ -804,9 +855,17 @@ export const TestRunnerTab: React.FC<TestRunnerTabProps> = ({ auditLogs }) => {
                     className="hover:bg-[#151D28] transition cursor-pointer group"
                   >
                     <td className="py-3 px-4">
-                      {test.passed ? (
+                      {test.status === 'PASSED' ? (
                         <span className="inline-flex items-center gap-1 text-emerald-400 font-bold font-mono">
                           <CheckCircle2 className="w-3.5 h-3.5" /> PASS
+                        </span>
+                      ) : test.status === 'NOT_EXECUTED' ? (
+                        <span className="inline-flex items-center gap-1 text-slate-300 font-bold font-mono">
+                          <CircleDashed className="w-3.5 h-3.5" /> NOT RUN
+                        </span>
+                      ) : test.status === 'REVIEW' ? (
+                        <span className="inline-flex items-center gap-1 text-amber-400 font-bold font-mono">
+                          <AlertTriangle className="w-3.5 h-3.5" /> REVIEW
                         </span>
                       ) : (
                         <span className="inline-flex items-center gap-1 text-rose-400 font-bold font-mono">

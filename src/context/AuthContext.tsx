@@ -42,6 +42,7 @@ const createDemoPresentationSession = (): { user: User; session: Session } => {
     user_metadata: {
       display_name: DEMO_CREDENTIALS.displayName,
       full_name: DEMO_CREDENTIALS.displayName,
+      // Explicit presentation role. RBAC must not infer admin from a missing membership row.
       role: DEMO_CREDENTIALS.role,
       is_demo_session: true,
     },

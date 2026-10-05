@@ -32,12 +32,14 @@ import { ExceptionModal } from './components/ExceptionModal';
 import { AIAnalystModal } from './components/AIAnalystModal';
 import { LoginScreen } from './components/LoginScreen';
 import { AuthProvider, useAuth } from './context/AuthContext';
-import { RBACProvider } from './context/RBACContext';
+import { RBACProvider, useRBAC } from './context/RBACContext';
+import { executeUnifiedTestSuite } from './utils/testCenterUtils';
 import { ShieldCheck, Sparkles, CheckCircle2, Archive, X, Loader2 } from 'lucide-react';
 import { NavTabId } from './components/Sidebar';
 
 function MainWorkspace() {
   const { isAuthenticated, isLoading } = useAuth();
+  const { can } = useRBAC();
   const [activeTab, setActiveTab] = useState<NavTabId>('overview');
   const [searchQuery, setSearchQuery] = useState('');
   const [targetAssetGroupId, setTargetAssetGroupId] = useState<string>('');
@@ -120,6 +122,10 @@ function MainWorkspace() {
     reasonText: string,
     notes: string
   ) => {
+    if (!can('ARCHIVE_ASSET')) {
+      showToast('info', 'Action unavailable', 'Your role cannot archive assets.');
+      return false;
+    }
     const targetCluster = clusters.find(c => c.underlyingAssetId === assetGroupId);
     const hostname = targetCluster?.canonicalHostname || assetGroupId;
 
@@ -154,10 +160,15 @@ function MainWorkspace() {
       `Asset ${hostname} Archived`,
       `Removed from active inventory. Identity, findings, and evidence preserved. Will auto-reactivate if observed again.`
     );
+    return true;
   };
 
   // Unarchive / Restore an Asset
   const handleUnarchiveAsset = (assetGroupId: string) => {
+    if (!can('REACTIVATE_ASSET')) {
+      showToast('info', 'Action unavailable', 'Your role cannot restore archived assets.');
+      return false;
+    }
     const targetCluster = clusters.find(c => c.underlyingAssetId === assetGroupId);
     const hostname = targetCluster?.canonicalHostname || assetGroupId;
 
@@ -178,10 +189,16 @@ function MainWorkspace() {
       `Asset ${hostname} Restored`,
       `Returned to Active Inventory with full historical telemetry intact.`
     );
+    return true;
   };
 
-  // Ingest Simulated Telemetry Observation -> Test Automatic Reappearance
+  // Ingest Simulated Telemetry Observation -> Test Automatic Reappearance.
+  // SYNC_DATA is the existing operational ingest permission (admin and manager).
   const handleSimulateObservation = (newRecord: AssetRecord) => {
+    if (!can('SYNC_DATA')) {
+      showToast('info', 'Action unavailable', 'Your role cannot ingest simulated observations.');
+      return false;
+    }
     setRecords(prev => [newRecord, ...prev]);
 
     const matchingCluster = clusters.find(c => {
@@ -234,10 +251,15 @@ function MainWorkspace() {
         `Ingested ${newRecord.recordId} (${newRecord.sourceTool}) for ${newRecord.hostname}. Engine re-correlated.`
       );
     }
+    return true;
   };
 
   // Update Configurable Lifecycle Policy
   const handleUpdateLifecyclePolicy = (newPolicy: LifecyclePolicyConfig) => {
+    if (!can('ARCHIVE_ASSET')) {
+      showToast('info', 'Action unavailable', 'Your role cannot change lifecycle policy.');
+      return false;
+    }
     setLifecyclePolicy(newPolicy);
     addAuditLog(
       'POLICY_UPDATE',
@@ -249,6 +271,7 @@ function MainWorkspace() {
       'Lifecycle Policy Updated',
       `Archive threshold set to ${newPolicy.archiveEligibleThresholdDays} days. Recalculated asset visibility.`
     );
+    return true;
   };
 
   const handleViewEvidence = (asset: UnderlyingAsset) => {
@@ -266,6 +289,10 @@ function MainWorkspace() {
   };
 
   const handleCreateException = (assetGroupId: string, recordIds: string[], reason: ExceptionReason, analystNote: string) => {
+    if (!can('CREATE_EXCEPTION')) {
+      showToast('info', 'Action unavailable', 'Your role cannot create exceptions.');
+      return false;
+    }
     const newException: CorrelationException = {
       exceptionId: `EXC-${Date.now()}`,
       assetGroupId,
@@ -277,14 +304,20 @@ function MainWorkspace() {
     };
     setExceptions(prev => [newException, ...prev]);
     addAuditLog('CREATE_EXCEPTION', assetGroupId, `Created exception (${reason}): "${analystNote}"`);
+    return true;
   };
 
   const handleResolveException = (exceptionId: string) => {
+    if (!can('CREATE_EXCEPTION')) {
+      showToast('info', 'Action unavailable', 'Your role cannot revoke exceptions.');
+      return false;
+    }
     setExceptions(prev =>
       prev.map(e => (e.exceptionId === exceptionId ? { ...e, status: 'REVOKED' } : e))
     );
     addAuditLog('RESOLVE_EXCEPTION', exceptionId, `Analyst revoked exception ${exceptionId}. Baseline deterministic correlation restored.`);
     showToast('info', 'Exception Revoked', `Exception ${exceptionId} marked revoked.`);
+    return true;
   };
 
   const handleTriggerSourceSync = (sourceName: string) => {
@@ -293,13 +326,23 @@ function MainWorkspace() {
   };
 
   const handleAcceptCorrelation = (assetGroupId: string) => {
+    if (!can('MANAGE_CORRELATION')) {
+      showToast('info', 'Action unavailable', 'Your role cannot accept a correlation.');
+      return false;
+    }
     addAuditLog('ACCEPT_CORRELATION', assetGroupId, `Analyst explicitly accepted deterministic correlation for ${assetGroupId}`);
     alert(`Correlation accepted for asset group ${assetGroupId}. Recorded in session audit log.`);
+    return true;
   };
 
   const handleRejectCorrelation = (assetGroupId: string) => {
+    if (!can('MANAGE_CORRELATION')) {
+      showToast('info', 'Action unavailable', 'Your role cannot reject a correlation.');
+      return false;
+    }
     addAuditLog('REJECT_CORRELATION', assetGroupId, `Analyst explicitly rejected deterministic correlation for ${assetGroupId}`);
     alert(`Correlation rejected for asset group ${assetGroupId}. Recorded in session audit log.`);
+    return true;
   };
 
   const handleViewCorrelationForAsset = (assetGroupId: string) => {
@@ -321,6 +364,8 @@ function MainWorkspace() {
   };
 
   const reviewCount = clusters.filter(c => c.correlationStatus === 'REVIEW_REQUIRED').length;
+  const verification = useMemo(() => executeUnifiedTestSuite(), []);
+  const verificationBadge = `${verification.passedCount}/${verification.executedCount}`;
   const demoAsset = clusters.find(c => c.canonicalHostname === 'WEB-SRV-01') || clusters[0];
 
   if (isLoading) {
@@ -344,7 +389,7 @@ function MainWorkspace() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         reviewCount={reviewCount}
-        totalTests={118}
+        verificationBadge={verificationBadge}
         onOpenAIAnalyst={() => handleExplainAI(demoAsset)}
       />
 
@@ -359,7 +404,7 @@ function MainWorkspace() {
           totalRecords={records.length}
           totalAssetGroups={clusters.length}
           totalFindings={SYNTHETIC_FINDINGS.length}
-          totalTests={118}
+          verificationBadge={verificationBadge}
           onOpenAIAnalyst={() => handleExplainAI(demoAsset)}
           searchQuery={searchQuery}
           setSearchQuery={setSearchQuery}

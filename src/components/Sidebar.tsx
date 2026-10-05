@@ -31,7 +31,7 @@ interface SidebarProps {
   activeTab: NavTabId;
   setActiveTab: (tab: NavTabId) => void;
   reviewCount: number;
-  totalTests?: number;
+  verificationBadge?: string;
   onOpenAIAnalyst?: () => void;
 }
 
@@ -51,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
   setActiveTab,
   reviewCount,
-  totalTests = 118,
+  verificationBadge = '—',
   onOpenAIAnalyst,
 }) => {
   const [isHovered, setIsHovered] = useState<boolean>(false);
@@ -174,7 +174,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
           id: 'tests',
           label: 'Test Suite',
           icon: TestCommandCenterIcon,
-          badge: `${totalTests}`,
+          badge: verificationBadge,
         },
         {
           id: 'help',

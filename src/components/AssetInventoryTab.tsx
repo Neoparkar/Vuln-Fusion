@@ -66,6 +66,7 @@ import {
 import { ArchiveAssetModal } from './ArchiveAssetModal';
 import { SimulateObservationModal } from './SimulateObservationModal';
 import { LifecyclePolicyModal } from './LifecyclePolicyModal';
+import { useRBAC } from '../context/RBACContext';
 
 export type InventoryViewMode = 'ACTIVE' | 'ALL' | 'AGING' | 'STALE' | 'ARCHIVE_ELIGIBLE' | 'REVIEW_REQUIRED' | 'ARCHIVED';
 
@@ -100,6 +101,12 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
   onUpdateLifecyclePolicy,
   externalSearchQuery = '',
 }) => {
+  const { can } = useRBAC();
+  const canArchive = can('ARCHIVE_ASSET');
+  const canRestore = can('REACTIVATE_ASSET');
+  const canSimulateObservation = can('SYNC_DATA');
+  const deniedTitle = 'Unavailable for your role';
+
   // View and filter states
   const [inventoryView, setInventoryView] = useState<InventoryViewMode>('ACTIVE');
   const [searchQuery, setSearchQuery] = useState('');
@@ -772,8 +779,12 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
         <div className="flex items-center gap-2 shrink-0">
           <button
             type="button"
-            onClick={() => setIsPolicyModalOpen(true)}
-            className="px-3 py-1.5 bg-[#151A21] hover:bg-[#181E26] text-[#8B95A5] hover:text-[#F1F5F9] border border-[#1B2430] rounded-xl text-xs font-medium transition flex items-center gap-1.5 cursor-pointer shadow-sm"
+            onClick={() => {
+              if (canArchive) setIsPolicyModalOpen(true);
+            }}
+            disabled={!canArchive}
+            title={canArchive ? 'Configure archive threshold' : deniedTitle}
+            className={`px-3 py-1.5 bg-[#151A21] hover:bg-[#181E26] text-[#8B95A5] hover:text-[#F1F5F9] border border-[#1B2430] rounded-xl text-xs font-medium transition flex items-center gap-1.5 shadow-sm ${canArchive ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
           >
             <Sliders className="w-3.5 h-3.5 text-[#3B82F6]" />
             <span>Archive Threshold: <strong className="text-[#F1F5F9] font-mono">{lifecyclePolicy.archiveEligibleThresholdDays}d</strong></span>
@@ -1295,9 +1306,12 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
                             <>
                               <button
                                 type="button"
-                                onClick={() => onUnarchiveAsset && onUnarchiveAsset(cluster.underlyingAssetId)}
-                                className="px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-lg text-xs font-medium transition flex items-center gap-1"
-                                title="Restore to Active Inventory"
+                                onClick={() => {
+                                  if (canRestore && onUnarchiveAsset) onUnarchiveAsset(cluster.underlyingAssetId);
+                                }}
+                                disabled={!canRestore}
+                                className={`px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 rounded-lg text-xs font-medium transition flex items-center gap-1 ${canRestore ? '' : 'opacity-40 cursor-not-allowed'}`}
+                                title={canRestore ? 'Restore to Active Inventory' : deniedTitle}
                               >
                                 <RotateCcw className="w-3 h-3" />
                                 <span>Restore</span>
@@ -1305,9 +1319,12 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
 
                               <button
                                 type="button"
-                                onClick={() => setAssetToSimulate(cluster)}
-                                className="px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium transition flex items-center gap-1"
-                                title="Simulate Telemetry Re-Observation to Test Automatic Reactivation"
+                                onClick={() => {
+                                  if (canSimulateObservation) setAssetToSimulate(cluster);
+                                }}
+                                disabled={!canSimulateObservation}
+                                className={`px-2 py-1 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 rounded-lg text-xs font-medium transition flex items-center gap-1 ${canSimulateObservation ? '' : 'opacity-40 cursor-not-allowed'}`}
+                                title={canSimulateObservation ? 'Simulate Telemetry Re-Observation to Test Automatic Reactivation' : deniedTitle}
                               >
                                 <RefreshCw className="w-3 h-3" />
                                 <span>Simulate Ingest</span>
@@ -1317,13 +1334,18 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
                             /* If Active / Archive Eligible: Show Archive Button */
                             <button
                               type="button"
-                              onClick={() => setAssetToArchive(cluster)}
+                              onClick={() => {
+                                if (canArchive) setAssetToArchive(cluster);
+                              }}
+                              disabled={!canArchive}
                               className={`px-2 py-1 rounded-lg text-xs font-medium transition flex items-center gap-1 ${
-                                ctx.lifecycle.isArchiveEligible
+                                !canArchive
+                                  ? 'opacity-40 cursor-not-allowed bg-[#10141A] text-[#8B95A5] border border-[#1B2430]'
+                                  : ctx.lifecycle.isArchiveEligible
                                   ? 'bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 shadow-sm'
                                   : 'bg-[#10141A] hover:bg-rose-500/10 text-[#8B95A5] hover:text-rose-400 border border-[#1B2430]'
                               }`}
-                              title={ctx.lifecycle.isArchiveEligible ? 'Asset is Archive Eligible' : 'Archive asset'}
+                              title={!canArchive ? deniedTitle : ctx.lifecycle.isArchiveEligible ? 'Asset is Archive Eligible' : 'Archive asset'}
                             >
                               <Archive className="w-3 h-3" />
                               <span>Archive</span>
@@ -1404,9 +1426,11 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setAssetToArchive(cluster);
+                        if (canArchive) setAssetToArchive(cluster);
                       }}
-                      className="px-2 py-0.5 bg-amber-500 text-black font-bold rounded text-[10px]"
+                      disabled={!canArchive}
+                      title={canArchive ? 'Archive asset' : deniedTitle}
+                      className={`px-2 py-0.5 bg-amber-500 text-black font-bold rounded text-[10px] ${canArchive ? '' : 'opacity-40 cursor-not-allowed'}`}
                     >
                       Archive
                     </button>
@@ -1424,8 +1448,12 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
                     {ctx.lifecycle.isArchived ? (
                       <button
                         type="button"
-                        onClick={() => onUnarchiveAsset && onUnarchiveAsset(cluster.underlyingAssetId)}
-                        className="text-slate-300 font-medium underline"
+                        onClick={() => {
+                          if (canRestore && onUnarchiveAsset) onUnarchiveAsset(cluster.underlyingAssetId);
+                        }}
+                        disabled={!canRestore}
+                        title={canRestore ? 'Restore to Active Inventory' : deniedTitle}
+                        className={`text-slate-300 font-medium underline ${canRestore ? '' : 'opacity-40 cursor-not-allowed no-underline'}`}
                       >
                         Restore
                       </button>
@@ -1638,10 +1666,13 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
                         <button
                           type="button"
                           onClick={() => {
-                            if (onUnarchiveAsset) onUnarchiveAsset(selectedAssetForProfile.underlyingAssetId);
+                            if (!canRestore || !onUnarchiveAsset) return;
+                            onUnarchiveAsset(selectedAssetForProfile.underlyingAssetId);
                             setSelectedAssetForProfile(null);
                           }}
-                          className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                          disabled={!canRestore}
+                          title={canRestore ? 'Restore to Active Inventory' : deniedTitle}
+                          className={`px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${canRestore ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
                           <span>Restore Asset to Active Inventory</span>
@@ -1649,8 +1680,12 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
 
                         <button
                           type="button"
-                          onClick={() => setAssetToSimulate(selectedAssetForProfile)}
-                          className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 cursor-pointer"
+                          onClick={() => {
+                            if (canSimulateObservation) setAssetToSimulate(selectedAssetForProfile);
+                          }}
+                          disabled={!canSimulateObservation}
+                          title={canSimulateObservation ? 'Simulate fresh telemetry scan' : deniedTitle}
+                          className={`px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs font-semibold transition flex items-center gap-1.5 ${canSimulateObservation ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
                         >
                           <RefreshCw className="w-3.5 h-3.5" />
                           <span>Simulate Fresh Telemetry Scan</span>
@@ -1676,8 +1711,12 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
                       </p>
                       <button
                         type="button"
-                        onClick={() => setAssetToArchive(selectedAssetForProfile)}
-                        className="px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-xs transition flex items-center gap-1.5 cursor-pointer"
+                        onClick={() => {
+                          if (canArchive) setAssetToArchive(selectedAssetForProfile);
+                        }}
+                        disabled={!canArchive}
+                        title={canArchive ? 'Archive asset' : deniedTitle}
+                        className={`px-3.5 py-1.5 bg-amber-500 hover:bg-amber-400 text-black font-bold rounded-lg text-xs transition flex items-center gap-1.5 ${canArchive ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'}`}
                       >
                         <Archive className="w-3.5 h-3.5" />
                         <span>Archive Asset Now</span>
@@ -1953,9 +1992,8 @@ export const AssetInventoryTab: React.FC<AssetInventoryTabProps> = ({
         records={records}
         onClose={() => setAssetToSimulate(null)}
         onSimulateObservation={(newRecord) => {
-          if (onSimulateObservation) {
-            onSimulateObservation(newRecord);
-          }
+          if (!canSimulateObservation || !onSimulateObservation) return;
+          onSimulateObservation(newRecord);
         }}
       />
 

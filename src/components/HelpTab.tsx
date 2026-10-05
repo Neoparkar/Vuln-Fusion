@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { executeUnifiedTestSuite } from '../utils/testCenterUtils';
 import {
   HelpCircle,
   BookOpen,
@@ -24,6 +25,7 @@ interface HelpTabProps {
 type HelpSubTab = 'architecture' | 'workflows' | 'shortcuts' | 'diagnostics';
 
 export const HelpTab: React.FC<HelpTabProps> = ({ onNavigateTab }) => {
+  const verification = useMemo(() => executeUnifiedTestSuite(), []);
   const [subTab, setSubTab] = useState<HelpSubTab>('architecture');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
@@ -262,7 +264,7 @@ export const HelpTab: React.FC<HelpTabProps> = ({ onNavigateTab }) => {
             </div>
             <div className="p-3 bg-[#0B1420] rounded-xl border border-[#1B3045] flex justify-between">
               <span className="text-slate-400">DETERMINISTIC VERIFICATION</span>
-              <span className="text-emerald-400 font-bold">118 / 118 Assertions PASSING</span>
+              <span className="text-emerald-400 font-bold">{verification.passedCount} / {verification.executedCount} executed · {verification.failedCount} failed · {verification.notExecutedCount} not executed</span>
             </div>
             <div className="p-3 bg-[#0B1420] rounded-xl border border-[#1B3045] flex justify-between">
               <span className="text-slate-400">AI GATEWAY STATUS</span>

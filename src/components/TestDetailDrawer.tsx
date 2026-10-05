@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   AlertTriangle,
   XCircle,
+  CircleDashed,
   Copy,
   Check,
   Clock,
@@ -105,6 +106,13 @@ export const TestDetailDrawer: React.FC<TestDetailDrawerProps> = ({ test, onClos
       return (
         <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs font-bold uppercase tracking-wider font-mono">
           <AlertTriangle className="w-3.5 h-3.5" /> REVIEW REQUIRED
+        </span>
+      );
+    }
+    if (test.status === 'NOT_EXECUTED') {
+      return (
+        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-500/10 text-slate-300 border border-slate-500/30 text-xs font-bold uppercase tracking-wider font-mono">
+          <CircleDashed className="w-3.5 h-3.5" /> NOT EXECUTED
         </span>
       );
     }

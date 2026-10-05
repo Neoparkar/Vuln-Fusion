@@ -1,5 +1,13 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 
+/**
+ * Role written when a real session has no membership row.
+ * An empty organization does not grant administrator.
+ */
+export function roleForMissingMembership(_existingOrgMemberCount: number | null | undefined): 'user' {
+  return 'user';
+}
+
 export const organizationService = {
   async getUserOrganizations(userId: string) {
     if (!isSupabaseConfigured) return [];
@@ -41,7 +49,7 @@ export const organizationService = {
           .select('*', { count: 'exact', head: true })
           .eq('organization_id', demoOrgId);
 
-        const assignedRole = (count === 0) ? 'admin' : 'user';
+        const assignedRole = roleForMissingMembership(count);
 
         await supabase.from('organization_members').insert({
           organization_id: demoOrgId,

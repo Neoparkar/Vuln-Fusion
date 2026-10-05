@@ -37,9 +37,10 @@ export function exportTestSuiteToJson(
       environment: 'Production Build',
       engineAuthority: '100% Client-Side Deterministic (Zero AI Dependency for Assertions)',
       totalTests: tests.length,
-      passedCount: tests.filter(t => t.passed).length,
+      passedCount: tests.filter(t => t.status === 'PASSED').length,
       failedCount: tests.filter(t => t.status === 'FAILED').length,
       reviewCount: tests.filter(t => t.status === 'REVIEW').length,
+      notExecutedCount: tests.filter(t => t.status === 'NOT_EXECUTED').length,
       executionDurationMs: snapshot.durationMs,
     },
     categorySummaries: snapshot.categorySummaries,
@@ -149,10 +150,12 @@ export function exportTestSuiteToPdf(
   doc.text(`RUN ID: ${snapshot.runId}  |  SCOPE: ${scope.toUpperCase()}  |  ENVIRONMENT: PRODUCTION BUILD`, 74, 72);
 
   // Execution Summary Table
-  const passedCount = tests.filter(t => t.passed).length;
+  const passedCount = tests.filter(t => t.status === 'PASSED').length;
   const failedCount = tests.filter(t => t.status === 'FAILED').length;
   const reviewCount = tests.filter(t => t.status === 'REVIEW').length;
-  const passRate = tests.length > 0 ? `${Math.round((passedCount / tests.length) * 100)}%` : '100%';
+  const notExecutedCount = tests.filter(t => t.status === 'NOT_EXECUTED').length;
+  const executedCount = tests.filter(t => t.status !== 'NOT_EXECUTED' && t.status !== 'SKIPPED').length;
+  const passRate = executedCount > 0 ? `${Math.round((passedCount / executedCount) * 100)}% of executed` : '0%';
 
   autoTable(doc, {
     startY: 95,
@@ -160,7 +163,7 @@ export function exportTestSuiteToPdf(
     theme: 'grid',
     head: [['VALIDATION HEALTH', 'TOTAL TESTS', 'PASSED', 'REVIEW REQUIRED', 'FAILED', 'DURATION', 'GENERATED AT']],
     body: [[
-      failedCount === 0 && reviewCount === 0 ? '100% HEALTHY' : 'REQUIRES ATTENTION',
+      failedCount > 0 || reviewCount > 0 ? 'REQUIRES ATTENTION' : notExecutedCount > 0 ? `${passedCount}/${executedCount} EXECUTED PASSED` : 'ALL EXECUTED CHECKS PASSED',
       String(tests.length),
       `${passedCount} (${passRate})`,
       String(reviewCount),
@@ -269,10 +272,12 @@ export function exportTestSuiteToHtml(
   snapshot: TestExecutionSnapshot,
   scope: string = 'Full Test Suite'
 ): string {
-  const passedCount = tests.filter(t => t.passed).length;
+  const passedCount = tests.filter(t => t.status === 'PASSED').length;
   const failedCount = tests.filter(t => t.status === 'FAILED').length;
   const reviewCount = tests.filter(t => t.status === 'REVIEW').length;
-  const passPercentage = tests.length > 0 ? Math.round((passedCount / tests.length) * 100) : 100;
+  const notExecutedCount = tests.filter(t => t.status === 'NOT_EXECUTED').length;
+  const executedCount = tests.filter(t => t.status !== 'NOT_EXECUTED' && t.status !== 'SKIPPED').length;
+  const passPercentage = executedCount > 0 ? Math.round((passedCount / executedCount) * 100) : 0;
 
   const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -361,7 +366,7 @@ export function exportTestSuiteToHtml(
         </div>
       </div>
       <div style="text-align: right;">
-        <span class="badge badge-pass" style="font-size: 14px; padding: 6px 14px;">${passedCount} / ${tests.length} PASS (${passPercentage}%)</span>
+        <span class="badge badge-pass" style="font-size: 14px; padding: 6px 14px;">${passedCount} / ${executedCount} EXECUTED PASSED (${passPercentage}%) · ${notExecutedCount} NOT EXECUTED · ${failedCount} FAILED</span>
         <div style="font-size: 11px; color: var(--text-muted); margin-top: 6px; font-family: monospace;">Run ID: ${snapshot.runId}</div>
       </div>
     </div>
@@ -435,10 +440,12 @@ export function exportTestSuiteToMarkdown(
   snapshot: TestExecutionSnapshot,
   scope: string = 'Full Test Suite'
 ): string {
-  const passedCount = tests.filter(t => t.passed).length;
+  const passedCount = tests.filter(t => t.status === 'PASSED').length;
   const failedCount = tests.filter(t => t.status === 'FAILED').length;
   const reviewCount = tests.filter(t => t.status === 'REVIEW').length;
-  const passRate = tests.length > 0 ? `${Math.round((passedCount / tests.length) * 100)}%` : '100%';
+  const notExecutedCount = tests.filter(t => t.status === 'NOT_EXECUTED').length;
+  const executedCount = tests.filter(t => t.status !== 'NOT_EXECUTED' && t.status !== 'SKIPPED').length;
+  const passRate = executedCount > 0 ? `${Math.round((passedCount / executedCount) * 100)}% of executed` : '0%';
 
   const md = [
     `# VulnFusion Test Validation Report`,
@@ -455,11 +462,13 @@ export function exportTestSuiteToMarkdown(
     ``,
     `| Metric | Value |`,
     `|:---|---:|`,
-    `| **Overall Health** | **${failedCount === 0 && reviewCount === 0 ? '✓ ALL VALIDATIONS HEALTHY' : '⚠ REQUIRES ATTENTION'}** |`,
+    `| **Overall Health** | **${failedCount > 0 || reviewCount > 0 ? '⚠ REQUIRES ATTENTION' : notExecutedCount > 0 ? 'EXECUTED CHECKS PASSED' : '✓ ALL EXECUTED CHECKS PASSED'}** |`,
     `| **Total Tests** | ${tests.length} |`,
+    `| **Executed Tests** | ${executedCount} |`,
     `| **Passed Tests** | ${passedCount} (${passRate}) |`,
     `| **Review Required** | ${reviewCount} |`,
     `| **Failed Tests** | ${failedCount} |`,
+    `| **Not Executed** | ${notExecutedCount} |`,
     `| **Execution Duration** | ${snapshot.durationMs} ms |`,
     ``,
     `---`,
@@ -479,7 +488,7 @@ export function exportTestSuiteToMarkdown(
     `| Status | ID | Test Name | Category | Duration | Details / Trace |`,
     `|:---:|:---|:---|:---|:---:|:---|`,
     ...tests.map(t =>
-      `| ${t.passed ? '✓ PASS' : t.status === 'REVIEW' ? '⚠ REVIEW' : '✕ FAIL'} | \`${t.id}\` | **${t.name}** | ${t.category} | ${t.durationMs}ms | ${t.details.replace(/\|/g, '\\|')} |`
+      `| ${t.status === 'PASSED' ? '✓ PASS' : t.status === 'REVIEW' ? '⚠ REVIEW' : t.status === 'NOT_EXECUTED' ? '○ NOT EXECUTED' : '✕ FAIL'} | \`${t.id}\` | **${t.name}** | ${t.category} | ${t.durationMs}ms | ${t.details.replace(/\|/g, '\\|')} |`
     ),
     ``,
     `---`,
