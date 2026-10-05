@@ -16,6 +16,18 @@ import {
 } from '../utils/exportEvidence';
 import { hasPermission, isLastAdministratorChangeBlocked, readPresentationRole, type OrgRole } from '../context/RBACContext';
 import { roleForMissingMembership } from '../services/organizationService';
+import {
+  DEMO_ORGANIZATION_ID,
+  authorizeAuditEvent,
+  deriveAuthorizedOrganizationId,
+  evaluateAuthenticatedMembershipInsert,
+  evaluateMemberRemoval,
+  evaluateMemberRoleChange,
+  mutationAllowed,
+  organizationScopeForSession,
+  resolveAuthorizedOrganization,
+  roleForExplicitProvision,
+} from '../tenancy/organizationAuthority';
 
 export function runDataQualityTests(): DataQualityTestResult[] {
   const results: DataQualityTestResult[] = [];
@@ -1675,6 +1687,394 @@ export function runRbacValidationTests(): RbacValidationTestResult[] {
         readPresentationRole({ user_metadata: { role: 'admin' } }, true) === null &&
         readPresentationRole(null, false) === null,
       details: 'readPresentationRole returns admin only for an explicit demo presentation session. A metadata role without is_demo_session does not grant admin.',
+    },
+    {
+      testId: 'RBAC-18',
+      testName: 'Real User Cannot Self-Join An Organization',
+      passed: (() => {
+        const arbitrary = evaluateAuthenticatedMembershipInsert({
+          actorUserId: 'user-a',
+          targetUserId: 'user-a',
+          organizationId: 'org-customer',
+          requestedRole: 'admin',
+          existingMemberCount: 4,
+          isPresentationSession: false,
+        });
+        const otherUser = evaluateAuthenticatedMembershipInsert({
+          actorUserId: 'user-a',
+          targetUserId: 'user-b',
+          organizationId: 'org-customer',
+          requestedRole: 'user',
+          existingMemberCount: 2,
+          isPresentationSession: false,
+        });
+        return arbitrary.allowed === false &&
+          arbitrary.assignedRole === null &&
+          arbitrary.reason === 'self_join_denied' &&
+          otherUser.allowed === false &&
+          otherUser.assignedRole === null;
+      })(),
+      details: 'evaluateAuthenticatedMembershipInsert denies self-join and any other authenticated membership insert. No role is assigned.',
+    },
+    {
+      testId: 'RBAC-19',
+      testName: 'Missing Membership Fails Closed',
+      passed: (() => {
+        const missing = resolveAuthorizedOrganization({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: [],
+          queryFailed: false,
+        });
+        const rejectedDemo = resolveAuthorizedOrganization({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: [],
+          queryFailed: false,
+          candidateOrganizationId: DEMO_ORGANIZATION_ID,
+        });
+        return missing.status === 'missing_membership' &&
+          missing.failClosed === true &&
+          missing.role === 'user' &&
+          missing.organizationId === null &&
+          rejectedDemo.status === 'candidate_rejected' &&
+          rejectedDemo.organizationId === null &&
+          roleForMissingMembership(0) === 'user';
+      })(),
+      details: 'A user with no membership stays unattached. A supplied demo organization id is rejected and the role stays user.',
+    },
+    {
+      testId: 'RBAC-20',
+      testName: 'Membership Query Failure Fails Closed',
+      passed: (() => {
+        const resolution = resolveAuthorizedOrganization({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'admin' }],
+          queryFailed: true,
+        });
+        return resolution.status === 'query_failed' &&
+          resolution.failClosed === true &&
+          resolution.role === 'user' &&
+          resolution.organizationId === null;
+      })(),
+      details: 'A failed membership query does not use cached or supplied rows and does not select an organization.',
+    },
+    {
+      testId: 'RBAC-21',
+      testName: 'User Cannot Escalate Own Role',
+      passed: (() => {
+        const members = [
+          { userId: 'admin-1', role: 'admin' as const },
+          { userId: 'admin-2', role: 'admin' as const },
+          { userId: 'viewer-1', role: 'user' as const },
+          { userId: 'ops-1', role: 'manager' as const },
+        ];
+        const viewer = evaluateMemberRoleChange({
+          actorUserId: 'viewer-1',
+          members,
+          targetUserId: 'viewer-1',
+          nextRole: 'admin',
+        });
+        const manager = evaluateMemberRoleChange({
+          actorUserId: 'ops-1',
+          members,
+          targetUserId: 'ops-1',
+          nextRole: 'admin',
+        });
+        const adminSelf = evaluateMemberRoleChange({
+          actorUserId: 'admin-1',
+          members,
+          targetUserId: 'admin-1',
+          nextRole: 'admin',
+        });
+        return viewer.allowed === false &&
+          manager.allowed === false &&
+          adminSelf.allowed === false &&
+          adminSelf.reason === 'self_role_change';
+      })(),
+      details: 'Viewer and Security Ops cannot raise their own role. An administrator cannot change their own row.',
+    },
+    {
+      testId: 'RBAC-22',
+      testName: 'Viewer Cannot Perform Protected Mutations',
+      passed: !mutationAllowed('user', 'asset_insert') &&
+        !mutationAllowed('user', 'asset_update') &&
+        !mutationAllowed('user', 'asset_delete') &&
+        !mutationAllowed('user', 'source_record_insert') &&
+        !mutationAllowed('user', 'finding_insert') &&
+        !mutationAllowed('user', 'correlation_update') &&
+        !mutationAllowed('user', 'investigation_insert') &&
+        !mutationAllowed('user', 'member_role_update') &&
+        !mutationAllowed('user', 'member_delete') &&
+        !mutationAllowed('user', 'member_insert'),
+      details: 'The viewer role fails the database write boundary for assets, records, findings, correlations, investigations, and membership changes.',
+    },
+    {
+      testId: 'RBAC-23',
+      testName: 'Security Ops Cannot Manage Membership',
+      passed: !mutationAllowed('manager', 'member_role_update') &&
+        !mutationAllowed('manager', 'member_delete') &&
+        !mutationAllowed('manager', 'member_insert') &&
+        !hasPermission('manager', 'MANAGE_ROLES') &&
+        !hasPermission('manager', 'REMOVE_MEMBERS') &&
+        evaluateMemberRoleChange({
+          actorUserId: 'ops-1',
+          members: [
+            { userId: 'admin-1', role: 'admin' },
+            { userId: 'ops-1', role: 'manager' },
+          ],
+          targetUserId: 'admin-1',
+          nextRole: 'user',
+        }).allowed === false &&
+        evaluateMemberRemoval({
+          actorUserId: 'ops-1',
+          members: [
+            { userId: 'admin-1', role: 'admin' },
+            { userId: 'ops-1', role: 'manager' },
+          ],
+          targetUserId: 'admin-1',
+        }).allowed === false,
+      details: 'Security Ops keeps operational permissions and cannot change roles or remove members.',
+    },
+    {
+      testId: 'RBAC-24',
+      testName: 'Only Administrator Can Change Membership',
+      passed: mutationAllowed('admin', 'member_role_update') &&
+        mutationAllowed('admin', 'member_delete') &&
+        !mutationAllowed('admin', 'member_insert') &&
+        evaluateMemberRoleChange({
+          actorUserId: 'admin-1',
+          members: [
+            { userId: 'admin-1', role: 'admin' },
+            { userId: 'admin-2', role: 'admin' },
+            { userId: 'ops-1', role: 'manager' },
+          ],
+          targetUserId: 'ops-1',
+          nextRole: 'user',
+        }).allowed === true &&
+        evaluateMemberRemoval({
+          actorUserId: 'admin-1',
+          members: [
+            { userId: 'admin-1', role: 'admin' },
+            { userId: 'admin-2', role: 'admin' },
+            { userId: 'ops-1', role: 'manager' },
+          ],
+          targetUserId: 'ops-1',
+        }).allowed === true &&
+        mutationAllowed('manager', 'investigation_insert') &&
+        mutationAllowed('manager', 'asset_insert') &&
+        !mutationAllowed('manager', 'asset_delete'),
+      details: 'Administrator can change another member role and remove a non-administrator. Authenticated inserts stay denied. Security Ops can still insert operational rows and cannot delete them.',
+    },
+    {
+      testId: 'RBAC-25',
+      testName: 'Last Administrator Cannot Be Demoted Or Removed',
+      passed: evaluateMemberRoleChange({
+          actorUserId: 'admin-1',
+          members: [
+            { userId: 'admin-1', role: 'admin' },
+            { userId: 'ops-1', role: 'manager' },
+          ],
+          targetUserId: 'admin-1',
+          nextRole: 'manager',
+        }).reason === 'last_administrator' &&
+        evaluateMemberRemoval({
+          actorUserId: 'admin-1',
+          members: [
+            { userId: 'admin-1', role: 'admin' },
+            { userId: 'ops-1', role: 'manager' },
+          ],
+          targetUserId: 'admin-1',
+        }).reason === 'last_administrator' &&
+        evaluateMemberRoleChange({
+          actorUserId: 'admin-1',
+          members: [
+            { userId: 'admin-1', role: 'admin' },
+            { userId: 'admin-2', role: 'admin' },
+          ],
+          targetUserId: 'admin-2',
+          nextRole: 'user',
+        }).allowed === true,
+      details: 'Demotion and removal of the only administrator are denied. A second administrator can demote the other administrator.',
+    },
+    {
+      testId: 'RBAC-26',
+      testName: 'Client Organization Id Cannot Cross Tenants',
+      passed: (() => {
+        const foreign = deriveAuthorizedOrganizationId({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'manager' }],
+          queryFailed: false,
+          candidateOrganizationId: 'org-b',
+        });
+        const planted = deriveAuthorizedOrganizationId({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: [{ organizationId: 'org-b', userId: 'user-b', role: 'admin' }],
+          queryFailed: false,
+          candidateOrganizationId: 'org-b',
+        });
+        const verified = deriveAuthorizedOrganizationId({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'manager' }],
+          queryFailed: false,
+          candidateOrganizationId: 'org-a',
+        });
+        return foreign === null && planted === null && verified === 'org-a';
+      })(),
+      details: 'A body organization id is used only when the authenticated user has that membership. Another user row and a foreign id do not select a tenant.',
+    },
+    {
+      testId: 'RBAC-27',
+      testName: 'Demo Organization Cannot Be Claimed',
+      passed: evaluateAuthenticatedMembershipInsert({
+          actorUserId: 'user-a',
+          targetUserId: 'user-a',
+          organizationId: DEMO_ORGANIZATION_ID,
+          requestedRole: 'admin',
+          existingMemberCount: 0,
+          isPresentationSession: false,
+        }).reason === 'demo_org_claim_denied' &&
+        resolveAuthorizedOrganization({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: [],
+          queryFailed: false,
+        }).organizationId !== DEMO_ORGANIZATION_ID,
+      details: 'An authenticated user cannot insert themselves into the demo organization, including when it has zero members.',
+    },
+    {
+      testId: 'RBAC-28',
+      testName: 'First Real Member Is Not Promoted To Admin',
+      passed: roleForMissingMembership(0) === 'user' &&
+        roleForExplicitProvision('user', 0) === 'user' &&
+        roleForExplicitProvision('manager', 0) === 'manager' &&
+        evaluateAuthenticatedMembershipInsert({
+          actorUserId: 'user-a',
+          targetUserId: 'user-b',
+          organizationId: 'org-new',
+          requestedRole: 'admin',
+          existingMemberCount: 0,
+          isPresentationSession: false,
+        }).assignedRole !== 'admin',
+      details: 'An empty organization does not upgrade a membership to administrator. Explicit provisioning keeps the requested non-admin role.',
+    },
+    {
+      testId: 'RBAC-29',
+      testName: 'Audit Event Cannot Cross Organizations',
+      passed: authorizeAuditEvent({
+          actorUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'user' }],
+          requestedOrganizationId: 'org-b',
+          requestedUserId: 'user-a',
+          metadata: { action: 'LOGIN' },
+        }).allowed === false &&
+        authorizeAuditEvent({
+          actorUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'user' }],
+          requestedOrganizationId: 'org-a',
+          requestedUserId: 'user-b',
+          metadata: { action: 'LOGIN' },
+        }).allowed === false &&
+        authorizeAuditEvent({
+          actorUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'user' }],
+          requestedOrganizationId: 'org-a',
+          requestedUserId: 'user-a',
+          metadata: { action: 'LOGIN' },
+        }).organizationId === 'org-a',
+      details: 'Audit writes require the actor membership and the actor user id. A foreign organization id is rejected.',
+    },
+    {
+      testId: 'RBAC-30',
+      testName: 'Audit Metadata Rejects Secrets',
+      passed: authorizeAuditEvent({
+          actorUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'admin' }],
+          requestedOrganizationId: 'org-a',
+          requestedUserId: 'user-a',
+          metadata: { password: 'hidden' },
+        }).allowed === false &&
+        authorizeAuditEvent({
+          actorUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'admin' }],
+          requestedOrganizationId: 'org-a',
+          requestedUserId: 'user-a',
+          metadata: { api_key: 'hidden', access_token: 'hidden' },
+        }).allowed === false &&
+        authorizeAuditEvent({
+          actorUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'admin' }],
+          requestedOrganizationId: 'org-a',
+          requestedUserId: 'user-a',
+          metadata: { authorization: 'Bearer secret-value' },
+        }).allowed === false &&
+        authorizeAuditEvent({
+          actorUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'admin' }],
+          requestedOrganizationId: 'org-a',
+          requestedUserId: 'user-a',
+          metadata: { newRole: 'manager', changedBy: 'admin@example.com' },
+        }).allowed === true,
+      details: 'Password, API key, access token, and authorization values block the audit write. Ordinary membership metadata is accepted.',
+    },
+    {
+      testId: 'RBAC-31',
+      testName: 'Presentation Demo Session Stays Isolated',
+      passed: (() => {
+        const presentationRole = readPresentationRole(
+          { user_metadata: { is_demo_session: true, role: 'admin' } },
+          true
+        );
+        const presentation = organizationScopeForSession({
+          isPresentationSession: true,
+          presentationRole,
+          resolution: resolveAuthorizedOrganization({
+            configured: true,
+            authenticatedUserId: 'user-a',
+            memberships: [],
+            queryFailed: false,
+          }),
+        });
+        const real = organizationScopeForSession({
+          isPresentationSession: false,
+          presentationRole: null,
+          resolution: resolveAuthorizedOrganization({
+            configured: true,
+            authenticatedUserId: 'user-a',
+            memberships: [],
+            queryFailed: false,
+          }),
+        });
+        return presentation.source === 'presentation' &&
+          presentation.role === 'admin' &&
+          presentation.organizationId === DEMO_ORGANIZATION_ID &&
+          real.source === 'fail_closed' &&
+          real.role === 'user' &&
+          real.organizationId === null;
+      })(),
+      details: 'An explicit presentation session keeps the demo organization and administrator role. A real session with no membership stays closed and is not given that organization.',
+    },
+    {
+      testId: 'RBAC-32',
+      testName: 'Unconfigured Client Fails Closed',
+      passed: (() => {
+        const resolution = resolveAuthorizedOrganization({
+          configured: false,
+          authenticatedUserId: 'user-a',
+          memberships: [{ organizationId: 'org-a', userId: 'user-a', role: 'admin' }],
+          queryFailed: false,
+          candidateOrganizationId: 'org-a',
+        });
+        return resolution.status === 'unconfigured' &&
+          resolution.role === 'user' &&
+          resolution.organizationId === null &&
+          resolution.failClosed === true;
+      })(),
+      details: 'An unconfigured client does not accept a supplied organization id or an administrator membership row.',
     },
   ];
 

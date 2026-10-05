@@ -2,6 +2,13 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { useAuth } from './AuthContext';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { auditService } from '../services/auditService';
+import { resolveSessionOrganization } from '../services/organizationService';
+import {
+  DEMO_ORGANIZATION_ID,
+  evaluateMemberRemoval,
+  evaluateMemberRoleChange,
+  organizationScopeForSession,
+} from '../tenancy/organizationAuthority';
 
 export type OrgRole = 'admin' | 'manager' | 'user';
 
@@ -53,7 +60,7 @@ interface RBACContextType {
 }
 
 const RBACContext = createContext<RBACContextType | undefined>(undefined);
-const DEMO_ORG_ID = '00000000-0000-0000-0000-000000000001';
+const DEMO_ORG_ID = DEMO_ORGANIZATION_ID;
 
 const ROLE_HIERARCHY: Record<OrgRole, number> = {
   user: 1,
@@ -138,11 +145,6 @@ export function readPresentationRole(user: { user_metadata?: Record<string, unkn
   return 'user';
 }
 
-function readMembershipRole(role: unknown): OrgRole {
-  if (role === 'admin' || role === 'manager' || role === 'user') return role;
-  return 'user';
-}
-
 const DEFAULT_ENTERPRISE_ROSTER: OrganizationMember[] = [
   {
     id: 'mem-admin-01',
@@ -186,11 +188,18 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const effectiveRole: OrgRole = presentationRole ?? role;
   const [members, setMembers] = useState<OrganizationMember[]>(DEFAULT_ENTERPRISE_ROSTER);
   const [isLoadingMembers, setIsLoadingMembers] = useState<boolean>(false);
+  const [authorizedOrganizationId, setAuthorizedOrganizationId] = useState<string | null>(null);
 
   const fetchMembershipAndMembers = async () => {
-    const presentationRole = readPresentationRole(currentUser, isDemoMode);
-    if (presentationRole) {
-      setRole(presentationRole);
+    const activePresentationRole = readPresentationRole(currentUser, isDemoMode);
+    if (activePresentationRole) {
+      const scope = organizationScopeForSession({
+        isPresentationSession: true,
+        presentationRole: activePresentationRole,
+        resolution: null,
+      });
+      setRole(scope.role);
+      setAuthorizedOrganizationId(scope.organizationId);
       setMembers(DEFAULT_ENTERPRISE_ROSTER);
       setIsLoadingMembers(false);
       return;
@@ -198,41 +207,44 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     if (!isSupabaseConfigured || !currentUser) {
       setRole('user');
+      setAuthorizedOrganizationId(null);
       setMembers(DEFAULT_ENTERPRISE_ROSTER);
       return;
     }
 
     setIsLoadingMembers(true);
     try {
-      // 1. Get current user's role in demo org
-      const { data: myMember, error: myError } = await supabase
-        .from('organization_members')
-        .select('role')
-        .eq('organization_id', DEMO_ORG_ID)
-        .eq('user_id', currentUser.id)
-        .maybeSingle();
+      const resolution = await resolveSessionOrganization();
+      const scope = organizationScopeForSession({
+        isPresentationSession: false,
+        presentationRole: null,
+        resolution,
+      });
+      setRole(scope.role);
+      setAuthorizedOrganizationId(scope.organizationId);
 
-      if (!myError && myMember) {
-        setRole(readMembershipRole(myMember.role));
-      } else {
-        setRole('user');
+      if (!scope.organizationId) {
+        setMembers([]);
+        return;
       }
 
-      // 2. Fetch all members for admin/manager view
       const { data: allMembers, error: membersError } = await supabase
         .from('organization_members')
         .select('id, organization_id, user_id, role, created_at, users(email, display_name)')
-        .eq('organization_id', DEMO_ORG_ID);
+        .eq('organization_id', scope.organizationId);
 
-      if (!membersError && allMembers && allMembers.length > 0) {
+      if (!membersError && allMembers) {
         setMembers(allMembers as any);
       } else {
-        setMembers(DEFAULT_ENTERPRISE_ROSTER);
+        setRole('user');
+        setAuthorizedOrganizationId(null);
+        setMembers([]);
       }
     } catch (err) {
       console.error('Error fetching RBAC membership:', err);
       setRole('user');
-      setMembers(DEFAULT_ENTERPRISE_ROSTER);
+      setAuthorizedOrganizationId(null);
+      setMembers([]);
     } finally {
       setIsLoadingMembers(false);
     }
@@ -258,13 +270,20 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     }
 
-    if (!isSupabaseConfigured || !currentUser) return false;
+    if (!isSupabaseConfigured || !currentUser || !authorizedOrganizationId) return false;
+    const roleDecision = evaluateMemberRoleChange({
+      actorUserId: currentUser.id,
+      members: members.map(member => ({ userId: member.user_id, role: member.role })),
+      targetUserId,
+      nextRole: newRole,
+    });
+    if (!roleDecision.allowed) return false;
 
     try {
       const { error } = await supabase
         .from('organization_members')
         .update({ role: newRole })
-        .eq('organization_id', DEMO_ORG_ID)
+        .eq('organization_id', authorizedOrganizationId)
         .eq('user_id', targetUserId);
 
       if (error) {
@@ -273,7 +292,7 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       await auditService.logEvent(
-        DEMO_ORG_ID,
+        authorizedOrganizationId,
         currentUser.id,
         'MEMBER_ROLE_CHANGED',
         'user',
@@ -301,13 +320,19 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return true;
     }
 
-    if (!isSupabaseConfigured || !currentUser) return false;
+    if (!isSupabaseConfigured || !currentUser || !authorizedOrganizationId) return false;
+    const removalDecision = evaluateMemberRemoval({
+      actorUserId: currentUser.id,
+      members: members.map(member => ({ userId: member.user_id, role: member.role })),
+      targetUserId,
+    });
+    if (!removalDecision.allowed) return false;
 
     try {
       const { error } = await supabase
         .from('organization_members')
         .delete()
-        .eq('organization_id', DEMO_ORG_ID)
+        .eq('organization_id', authorizedOrganizationId)
         .eq('user_id', targetUserId);
 
       if (error) {
@@ -316,7 +341,7 @@ export const RBACProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       await auditService.logEvent(
-        DEMO_ORG_ID,
+        authorizedOrganizationId,
         currentUser.id,
         'MEMBER_REMOVED',
         'user',

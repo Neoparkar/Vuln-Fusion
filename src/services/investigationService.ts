@@ -1,14 +1,19 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { requireAuthorizedOrganization } from './organizationService';
 
 export const investigationService = {
-  async createInvestigation(organizationId: string, userId: string, title: string, assetId?: string) {
+  async createInvestigation(candidateOrganizationId: string, userId: string, title: string, assetId?: string) {
     if (!isSupabaseConfigured) return null;
     try {
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user || userData.user.id !== userId) return null;
+      const organizationId = await requireAuthorizedOrganization(candidateOrganizationId);
+      if (!organizationId) return null;
       const { data, error } = await supabase
         .from('investigations')
         .insert({
           organization_id: organizationId,
-          user_id: userId,
+          user_id: userData.user.id,
           asset_id: assetId || null,
           title,
           status: 'OPEN',
@@ -24,9 +29,11 @@ export const investigationService = {
     }
   },
 
-  async getInvestigations(organizationId: string) {
+  async getInvestigations(candidateOrganizationId: string) {
     if (!isSupabaseConfigured) return [];
     try {
+      const organizationId = await requireAuthorizedOrganization(candidateOrganizationId);
+      if (!organizationId) return [];
       const { data, error } = await supabase
         .from('investigations')
         .select('*')

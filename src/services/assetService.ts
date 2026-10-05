@@ -1,8 +1,11 @@
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
+import { requireAuthorizedOrganization } from './organizationService';
 
 export const assetService = {
-  async getAssets(organizationId: string) {
+  async getAssets(candidateOrganizationId: string) {
     if (!isSupabaseConfigured) return [];
+    const organizationId = await requireAuthorizedOrganization(candidateOrganizationId);
+    if (!organizationId) return [];
     const { data, error } = await supabase
       .from('assets')
       .select('*')
@@ -11,8 +14,10 @@ export const assetService = {
     return data || [];
   },
 
-  async getSourceRecords(organizationId: string) {
+  async getSourceRecords(candidateOrganizationId: string) {
     if (!isSupabaseConfigured) return [];
+    const organizationId = await requireAuthorizedOrganization(candidateOrganizationId);
+    if (!organizationId) return [];
     const { data, error } = await supabase
       .from('source_records')
       .select('*')

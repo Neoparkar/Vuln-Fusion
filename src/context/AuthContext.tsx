@@ -1,10 +1,9 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '../lib/supabase';
 import { authService } from '../services/authService';
-import { organizationService } from '../services/organizationService';
+import { organizationService, resolveSessionOrganization } from '../services/organizationService';
 import { auditService } from '../services/auditService';
-import { syncService } from '../services/syncService';
 import {
   VULNFUSION_DEMO_MODE,
   DEMO_CREDENTIALS,
@@ -33,7 +32,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-const DEMO_ORG_ID = '00000000-0000-0000-0000-000000000001';
 
 const createDemoPresentationSession = (): { user: User; session: Session } => {
   const demoUser: User = {
@@ -81,6 +79,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<Session | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [isDemoMode, setIsDemoMode] = useState<boolean>(false);
+  const authorizedOrganizationIdRef = useRef<string | null>(null);
+
+  const bindRealSession = async (userId: string, email: string, recordLogin: boolean) => {
+    await organizationService.touchOwnProfile(userId, email);
+    const resolution = await resolveSessionOrganization();
+    authorizedOrganizationIdRef.current = resolution.status === 'resolved' ? resolution.organizationId : null;
+    if (recordLogin && authorizedOrganizationIdRef.current) {
+      await auditService.logEvent(
+        authorizedOrganizationIdRef.current,
+        userId,
+        'LOGIN',
+        'user',
+        userId
+      );
+    }
+  };
 
   useEffect(() => {
     // 1. Check for temporary presentation session marker in sessionStorage
@@ -134,10 +148,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(currentSession.user);
           setIsDemoMode(false);
           try {
-            await organizationService.ensureDemoMembership(currentSession.user.id, currentSession.user.email || '');
-            await syncService.syncDemoDataIfNeeded(DEMO_ORG_ID);
+            await bindRealSession(currentSession.user.id, currentSession.user.email || '', false);
           } catch (err) {
-            console.error('Demo membership & sync warning:', err);
+            authorizedOrganizationIdRef.current = null;
+            console.error('Organization resolution warning:', err);
           }
           setIsLoading(false);
           if (hasAuthHash || authCode) {
@@ -175,12 +189,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           setCurrentUser(currentSession.user);
           setIsDemoMode(false);
           try {
-            await organizationService.ensureDemoMembership(currentSession.user.id, currentSession.user.email || '');
-            await syncService.syncDemoDataIfNeeded(DEMO_ORG_ID);
-            if (_event === 'SIGNED_IN') {
-              await auditService.logEvent(DEMO_ORG_ID, currentSession.user.id, 'LOGIN', 'user', currentSession.user.id);
-            }
+            await bindRealSession(currentSession.user.id, currentSession.user.email || '', _event === 'SIGNED_IN');
           } catch (err) {
+            authorizedOrganizationIdRef.current = null;
             console.error('Auth state change async warning:', err);
           }
           if (window.location.hash.includes('access_token')) {
@@ -228,6 +239,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
               })
             );
           }
+          authorizedOrganizationIdRef.current = null;
           setCurrentUser(user);
           setSession(dSession);
           setIsDemoMode(true);
@@ -272,13 +284,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
 
-    if (currentUser && !isDemoMode) {
+    if (currentUser && !isDemoMode && authorizedOrganizationIdRef.current) {
       try {
-        await auditService.logEvent(DEMO_ORG_ID, currentUser.id, 'LOGOUT', 'user', currentUser.id);
+        await auditService.logEvent(
+          authorizedOrganizationIdRef.current,
+          currentUser.id,
+          'LOGOUT',
+          'user',
+          currentUser.id
+        );
       } catch (e) {
         // ignore
       }
     }
+    authorizedOrganizationIdRef.current = null;
 
     try {
       await authService.signOut();
