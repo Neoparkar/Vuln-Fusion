@@ -5,7 +5,26 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
-    plugins: [react(), tailwindcss()],
+    plugins: [
+      react(),
+      tailwindcss(),
+      {
+        name: 'server-connector-boundary',
+        enforce: 'pre',
+        resolveId(source, importer) {
+          if (!importer) return null;
+          const fromClient = importer.replace(/\\/g, '/').includes('/src/');
+          const normalized = source.replace(/\\/g, '/');
+          const serverImport = normalized === 'server'
+            || normalized.startsWith('server/')
+            || normalized.includes('/server/');
+          if (fromClient && serverImport) {
+            throw new Error(`Client module cannot import server connector code: ${source}`);
+          }
+          return null;
+        },
+      },
+    ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),

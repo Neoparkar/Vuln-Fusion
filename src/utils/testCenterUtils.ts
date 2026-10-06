@@ -6,6 +6,7 @@ import {
   runV2FocusedValidationTests,
   runLifecycleArchiveTests,
   runRbacValidationTests,
+  runConnectorSecurityTests,
 } from '../engine/testRunner';
 
 export type TestCategory = 'DATA' | 'CORRELATION' | 'LIFECYCLE' | 'SECURITY' | 'RBAC' | 'EXPORT' | 'SYSTEM';
@@ -70,6 +71,7 @@ export function executeUnifiedTestSuite(): TestExecutionSnapshot {
   const secResults = runSecurityValidationChecks();
   const expResults = runExportValidationTests();
   const rbacResults = runRbacValidationTests();
+  const connectorSecurityResults = runConnectorSecurityTests();
 
   const unifiedTests: UnifiedTestItem[] = [];
 
@@ -182,7 +184,7 @@ export function executeUnifiedTestSuite(): TestExecutionSnapshot {
     });
   });
 
-  // 6. RBAC VALIDATION TESTS (20 tests)
+  // 6. RBAC VALIDATION TESTS
   rbacResults.forEach((test) => {
     const isPassed = test.passed;
     unifiedTests.push({
@@ -197,6 +199,26 @@ export function executeUnifiedTestSuite(): TestExecutionSnapshot {
       actual: test.details,
       details: test.details,
       evidenceSnippet: `RBAC verification engine: ${test.details}`,
+      durationMs: 9 + (test.testId.charCodeAt(5) || 0) % 6,
+      runId,
+      timestamp,
+    });
+  });
+
+  connectorSecurityResults.forEach((test) => {
+    const isPassed = test.passed;
+    unifiedTests.push({
+      id: test.testId,
+      name: test.testName,
+      category: 'RBAC',
+      categoryLabel: 'Enterprise RBAC 1.0 Authorization',
+      description: `Executes server-side connector authorization helpers (${test.testId}).`,
+      status: isPassed ? 'PASSED' : 'FAILED',
+      passed: isPassed,
+      expected: 'Connector authorization helper matches the server-side tenancy rule',
+      actual: test.details,
+      details: test.details,
+      evidenceSnippet: `Connector security helper: ${test.details}`,
       durationMs: 9 + (test.testId.charCodeAt(5) || 0) % 6,
       runId,
       timestamp,

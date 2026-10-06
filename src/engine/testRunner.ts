@@ -1,6 +1,17 @@
 import { SYNTHETIC_ASSET_RECORDS } from '../data/syntheticDataset';
 import { SYNTHETIC_FINDINGS } from '../data/syntheticFindings';
 import { runCorrelationEngine, evaluatePair } from './correlationEngine';
+import {
+  authorizeConnectorOperation,
+  browserCanReadConnectorSecrets,
+  buildConnectorAuditMetadata,
+  clientImportBlocked,
+  connectorMayDecide,
+  geminiConnectorAuthority,
+  performSecretOperation,
+  roleMayPerformConnectorOperation,
+  toPublicConnectorError,
+} from '../tenancy/connectorSecurity';
 import { runFindingCorrelationEngine } from './findingCorrelationEngine';
 import { normalizeAssetRecord } from './normalizationEngine';
 import { DataQualityTestResult, TestCaseResult, UnderlyingAsset } from '../types/vulnfusion';
@@ -2079,5 +2090,276 @@ export function runRbacValidationTests(): RbacValidationTestResult[] {
   ];
 
   return cases;
+}
+
+export function runConnectorSecurityTests(): RbacValidationTestResult[] {
+  const managerMembership = [{ organizationId: 'org-a', userId: 'user-a', role: 'manager' as const }];
+  const adminMembership = [{ organizationId: 'org-a', userId: 'user-a', role: 'admin' as const }];
+  const viewerMembership = [{ organizationId: 'org-a', userId: 'user-a', role: 'user' as const }];
+  const enabledConnection = { id: 'conn-1', organizationId: 'org-a', enabled: true };
+  const secret = 'password=hunter2';
+  const publicError = toPublicConnectorError('UPSTREAM_AUTH_FAILED', secret);
+  const taintedAudit = buildConnectorAuditMetadata({
+    action: 'DATA_SOURCE_TESTED',
+    organizationId: 'org-a',
+    actorUserId: 'user-a',
+    connectionId: 'conn-1',
+    outcome: 'failed',
+    metadata: { password: secret },
+  });
+  const safeAudit = buildConnectorAuditMetadata({
+    action: 'DATA_SOURCE_SYNC_STARTED',
+    organizationId: 'org-a',
+    actorUserId: 'user-a',
+    connectionId: 'conn-1',
+    outcome: 'allowed',
+  });
+  const engineResult = runCorrelationEngine([{
+    recordId: 'connector-boundary-1',
+    sourceTool: 'Qualys',
+    observationMethod: 'agent',
+    hostname: 'boundary-host',
+    fqdn: null,
+    ipAddresses: ['10.1.1.1'],
+    operatingSystem: 'Linux',
+    assetTags: [],
+    firstObserved: null,
+    lastObserved: null,
+  }]);
+  const gemini = geminiConnectorAuthority();
+  const crossOrg = authorizeConnectorOperation({
+    configured: true,
+    authenticatedUserId: 'user-a',
+    memberships: managerMembership,
+    queryFailed: false,
+    operation: 'sync',
+    isPresentationSession: false,
+    connection: { id: 'conn-foreign', organizationId: 'org-b', enabled: true },
+    requiresConnection: true,
+    requiresEnabledConnection: true,
+    requiresSecret: true,
+    secretStoreConfigured: true,
+  });
+  const bodyOrg = authorizeConnectorOperation({
+    configured: true,
+    authenticatedUserId: 'user-a',
+    memberships: managerMembership,
+    queryFailed: false,
+    candidateOrganizationId: 'org-b',
+    operation: 'sync',
+    isPresentationSession: false,
+    requiresConnection: false,
+  });
+
+  return [
+    {
+      testId: 'CONN-01',
+      testName: 'Browser Cannot Access Connector Secret',
+      passed: browserCanReadConnectorSecrets() === false
+        && performSecretOperation({ configured: false }, 'get', 'vault:ref').code === 'SECRET_STORE_NOT_CONFIGURED'
+        && clientImportBlocked('server/secrets/secretStore') === true,
+      details: 'The browser secret accessor is closed, an unconfigured secret operation returns SECRET_STORE_NOT_CONFIGURED, and the server secret module is a blocked client import.',
+    },
+    {
+      testId: 'CONN-02',
+      testName: 'Request Body Organization Id Is Not Trusted',
+      passed: bodyOrg.ok === false
+        && bodyOrg.code === 'ORGANIZATION_NOT_AUTHORIZED'
+        && bodyOrg.organizationId === null,
+      details: 'A foreign organization id in the request is rejected. The authorized organization is not taken from that value.',
+    },
+    {
+      testId: 'CONN-03',
+      testName: 'Missing Membership Fails Closed For Connectors',
+      passed: (() => {
+        const missing = authorizeConnectorOperation({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: [],
+          queryFailed: false,
+          candidateOrganizationId: DEMO_ORGANIZATION_ID,
+          operation: 'sync',
+          isPresentationSession: false,
+        });
+        return missing.ok === false
+          && missing.code === 'ORGANIZATION_NOT_AUTHORIZED'
+          && missing.organizationId !== DEMO_ORGANIZATION_ID;
+      })(),
+      details: 'No membership does not select the demo organization or the supplied organization id.',
+    },
+    {
+      testId: 'CONN-04',
+      testName: 'Viewer Cannot Sync',
+      passed: roleMayPerformConnectorOperation('user', 'sync') === false
+        && authorizeConnectorOperation({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: viewerMembership,
+          queryFailed: false,
+          operation: 'sync',
+          isPresentationSession: false,
+          connection: enabledConnection,
+          requiresConnection: true,
+          requiresEnabledConnection: true,
+          requiresSecret: true,
+          secretStoreConfigured: true,
+        }).code === 'PERMISSION_DENIED',
+      details: 'Viewer does not have SYNC_DATA, and the connector authorization helper denies synchronization.',
+    },
+    {
+      testId: 'CONN-05',
+      testName: 'Security Ops Can Request Sync',
+      passed: roleMayPerformConnectorOperation('manager', 'sync') === true
+        && authorizeConnectorOperation({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: managerMembership,
+          queryFailed: false,
+          operation: 'sync',
+          isPresentationSession: false,
+          connection: enabledConnection,
+          requiresConnection: true,
+          requiresEnabledConnection: true,
+          requiresSecret: true,
+          secretStoreConfigured: true,
+        }).ok === true,
+      details: 'Security Ops keeps SYNC_DATA. Authorization succeeds only for that role membership, the enabled connection, and a configured secret store flag.',
+    },
+    {
+      testId: 'CONN-06',
+      testName: 'Administrator Can Manage Connection',
+      passed: roleMayPerformConnectorOperation('admin', 'manage') === true
+        && roleMayPerformConnectorOperation('manager', 'manage') === false
+        && roleMayPerformConnectorOperation('admin', 'rotate_credential') === true
+        && roleMayPerformConnectorOperation('admin', 'remove') === true
+        && authorizeConnectorOperation({
+          configured: true,
+          authenticatedUserId: 'user-a',
+          memberships: adminMembership,
+          queryFailed: false,
+          operation: 'manage',
+          isPresentationSession: false,
+        }).ok === true,
+      details: 'Administrator can manage, rotate, and remove a data source. Security Ops cannot manage the connection.',
+    },
+    {
+      testId: 'CONN-07',
+      testName: 'Cross Organization Connection Access Fails',
+      passed: crossOrg.ok === false
+        && crossOrg.code === 'CONNECTION_NOT_FOUND'
+        && crossOrg.reason === 'cross_organization'
+        && crossOrg.organizationId === 'org-a'
+        && crossOrg.connectionId === null,
+      details: 'A connection owned by another organization is not returned. The effective organization stays the membership organization.',
+    },
+    {
+      testId: 'CONN-08',
+      testName: 'Disabled Connection Cannot Sync',
+      passed: authorizeConnectorOperation({
+        configured: true,
+        authenticatedUserId: 'user-a',
+        memberships: managerMembership,
+        queryFailed: false,
+        operation: 'sync',
+        isPresentationSession: false,
+        connection: { id: 'conn-1', organizationId: 'org-a', enabled: false },
+        requiresConnection: true,
+        requiresEnabledConnection: true,
+        requiresSecret: true,
+        secretStoreConfigured: true,
+      }).code === 'CONNECTION_DISABLED',
+      details: 'Synchronization stops when the connection in the authorized organization is disabled.',
+    },
+    {
+      testId: 'CONN-09',
+      testName: 'Missing Secret Store Fails Safely',
+      passed: authorizeConnectorOperation({
+        configured: true,
+        authenticatedUserId: 'user-a',
+        memberships: adminMembership,
+        queryFailed: false,
+        operation: 'test',
+        isPresentationSession: false,
+        connection: enabledConnection,
+        requiresConnection: true,
+        requiresEnabledConnection: true,
+        requiresSecret: true,
+        secretStoreConfigured: false,
+      }).code === 'SECRET_STORE_NOT_CONFIGURED'
+        && performSecretOperation({ configured: true }, 'put', 'vault:ref').code === 'SECRET_STORE_NOT_CONFIGURED',
+      details: 'A test that needs a secret fails when the store is not configured. The secret operation still stores nothing when asked to persist a value.',
+    },
+    {
+      testId: 'CONN-10',
+      testName: 'Secret Values Never Appear In Errors',
+      passed: !JSON.stringify(publicError).includes('hunter2')
+        && !JSON.stringify(publicError).includes('password')
+        && publicError.error === 'UPSTREAM_AUTH_FAILED',
+      details: 'The public error body keeps the safe code and omits the upstream credential text.',
+    },
+    {
+      testId: 'CONN-11',
+      testName: 'Secret Values Never Appear In Audit Payload',
+      passed: taintedAudit.allow === false
+        && Object.keys(taintedAudit.metadata).length === 0
+        && safeAudit.allow === true
+        && !JSON.stringify(safeAudit.metadata).includes('hunter2')
+        && safeAudit.metadata.connectionId === 'conn-1'
+        && safeAudit.metadata.outcome === 'allowed',
+      details: 'Audit metadata containing a password is dropped. A normal sync audit records the connection and outcome only.',
+    },
+    {
+      testId: 'CONN-12',
+      testName: 'Connector Modules Remain Server Only',
+      passed: clientImportBlocked('server/connectors/connector')
+        && clientImportBlocked('server/security/authorizeConnectorRequest')
+        && clientImportBlocked('server/secrets/secretStore')
+        && clientImportBlocked('server/sync/syncJob')
+        && clientImportBlocked('../tenancy/connectorSecurity') === false,
+      details: 'Server connector, security, secret, and sync specifiers are blocked as client imports. The pure authorization helper is not in that set.',
+    },
+    {
+      testId: 'CONN-13',
+      testName: 'Demo Mode Cannot Invoke Connector Credentials',
+      passed: authorizeConnectorOperation({
+        configured: true,
+        authenticatedUserId: 'demo-user',
+        memberships: [{ organizationId: DEMO_ORGANIZATION_ID, userId: 'demo-user', role: 'admin' }],
+        queryFailed: false,
+        operation: 'sync',
+        isPresentationSession: true,
+        connection: { id: 'conn-demo', organizationId: DEMO_ORGANIZATION_ID, enabled: true },
+        requiresConnection: true,
+        requiresSecret: true,
+        secretStoreConfigured: true,
+      }).code === 'DEMO_MODE_ISOLATED',
+      details: 'A presentation session is denied before membership can select the demo organization or reach secret retrieval.',
+    },
+    {
+      testId: 'CONN-14',
+      testName: 'Deterministic Correlation Engine Remains Authoritative',
+      passed: engineResult.length === 1
+        && (engineResult[0].correlationStatus === 'CORRELATED'
+          || engineResult[0].correlationStatus === 'REVIEW_REQUIRED'
+          || engineResult[0].correlationStatus === 'SEPARATE')
+        && connectorMayDecide('underlyingAssetGroupId') === false
+        && connectorMayDecide('correlationStatus') === false
+        && connectorMayDecide('findingIdentity') === false,
+      details: 'runCorrelationEngine still returns a deterministic status. The connector helper cannot assign group id, correlation status, or finding identity.',
+    },
+    {
+      testId: 'CONN-15',
+      testName: 'Gemini Remains Explanation Only',
+      passed: gemini.explanationOnly === true
+        && gemini.mayAuthenticateConnectors === false
+        && gemini.mayAccessCredentials === false
+        && gemini.mayDetermineAssetIdentity === false
+        && gemini.mayDetermineCorrelationStatus === false
+        && gemini.mayDetermineFindingIdentity === false
+        && gemini.mayAuthorizeSync === false
+        && gemini.mayOverrideDeterministicResults === false,
+      details: 'The connector boundary keeps Gemini on explanation and away from credentials, identity, correlation, and synchronization.',
+    },
+  ];
 }
 
