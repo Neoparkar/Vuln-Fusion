@@ -13,6 +13,7 @@
 BEGIN;
 
 -- RLS is already enabled on the live project. Repeat so this script is sufficient.
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organizations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE organization_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE assets ENABLE ROW LEVEL SECURITY;
@@ -107,8 +108,9 @@ BEGIN
 END $$;
 
 -- ----------------------------------------------------------------------------
--- Remove every current policy on the eight tables, including permissive
--- policies whose names differ from the repository. Then install Phase 0A.
+-- Remove every current policy on the nine browser tables, including permissive
+-- policies whose names differ from the repository. Then install the same
+-- authenticated allow policies as src/db/schema.sql.
 -- ----------------------------------------------------------------------------
 
 DO $$
@@ -117,6 +119,7 @@ DECLARE
   policy_row record;
 BEGIN
   FOREACH target_table IN ARRAY ARRAY[
+    'users',
     'organizations',
     'organization_members',
     'assets',
@@ -137,6 +140,25 @@ BEGIN
     END LOOP;
   END LOOP;
 END $$;
+
+CREATE POLICY users_select_policy ON users
+  FOR SELECT
+  TO authenticated
+  USING (id = auth.uid() OR EXISTS (
+    SELECT 1 FROM organization_members om1
+    JOIN organization_members om2 ON om1.organization_id = om2.organization_id
+    WHERE om1.user_id = auth.uid() AND om2.user_id = users.id
+  ));
+
+CREATE POLICY users_insert_policy ON users
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (id = auth.uid());
+
+CREATE POLICY users_update_policy ON users
+  FOR UPDATE
+  TO authenticated
+  USING (id = auth.uid()) WITH CHECK (id = auth.uid());
 
 CREATE POLICY org_select_policy ON organizations
   FOR SELECT

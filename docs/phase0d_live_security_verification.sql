@@ -1,13 +1,22 @@
 -- ============================================================================
--- PHASE 0D-A LIVE SECURITY VERIFICATION
--- READ ONLY. Catalog SELECTs only.
+-- PHASE P0-C1 LIVE SECURITY VERIFICATION
+-- READ ONLY. Catalog SELECTs and informational count(*) reads only.
+-- Reconciled to docs/phase0d_live_security_migration.sql.
+-- Expected protected tables: 9. Expected policies: 33.
+-- Browser-facing ALLOW policies: 29, each targeted at role authenticated.
+-- Intentional DENY policies: 4 (org_insert_policy, org_update_policy,
+-- org_delete_policy, member_insert_policy). Those four stay PUBLIC deny
+-- policies and are not counted as authenticated allow policies.
+-- Connector tables (connections, sync_jobs) are not part of this migration.
 -- Do not run this against a database you do not administer.
 -- This script does not call user_belongs_to_org, user_has_org_role,
 -- ensure_demo_membership, or provision_organization_member.
+-- This script does not INSERT, UPDATE, DELETE, TRUNCATE, or DROP.
 -- A passing copy of the repository is not a live result. Status values below
 -- are computed only from the database session that executes this file.
 -- relforcerowsecurity is reported. A false value is not a failure by itself.
 -- If anon or authenticated is absent, privilege gates return NOT VERIFIED.
+-- Row counts are informational and are not a pass/fail gate.
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------
@@ -15,14 +24,15 @@
 -- ----------------------------------------------------------------------------
 WITH expected(ord, table_name) AS (
   VALUES
-    (1, 'organizations'),
-    (2, 'organization_members'),
-    (3, 'assets'),
-    (4, 'source_records'),
-    (5, 'findings'),
-    (6, 'correlations'),
-    (7, 'investigations'),
-    (8, 'audit_events')
+    (1, 'users'),
+    (2, 'organizations'),
+    (3, 'organization_members'),
+    (4, 'assets'),
+    (5, 'source_records'),
+    (6, 'findings'),
+    (7, 'correlations'),
+    (8, 'investigations'),
+    (9, 'audit_events')
 )
 SELECT
   e.table_name,
@@ -59,6 +69,7 @@ JOIN pg_policy pol
  AND pol.polname = p.policyname
 WHERE p.schemaname = 'public'
   AND p.tablename IN (
+    'users',
     'organizations',
     'organization_members',
     'assets',
@@ -77,6 +88,7 @@ SELECT
 FROM pg_policies p
 WHERE p.schemaname = 'public'
   AND p.tablename IN (
+    'users',
     'organizations',
     'organization_members',
     'assets',
@@ -172,7 +184,8 @@ FROM funcs
 ORDER BY ord, identity_arguments NULLS FIRST;
 
 -- ----------------------------------------------------------------------------
--- 5. Triggers on the eight tables, including timing text from the catalog.
+-- 5. Triggers on the nine protected tables, including timing text from the catalog.
+--    Expected security triggers are matched by name, table, function, and type bits.
 -- ----------------------------------------------------------------------------
 SELECT
   c.relname AS table_name,
@@ -198,6 +211,7 @@ WHERE n.nspname = 'public'
   AND c.relkind = 'r'
   AND NOT t.tgisinternal
   AND c.relname IN (
+    'users',
     'organizations',
     'organization_members',
     'assets',
@@ -210,6 +224,30 @@ WHERE n.nspname = 'public'
 ORDER BY c.relname, t.tgname;
 
 -- ----------------------------------------------------------------------------
+-- 6. Informational row counts. Read only. Not a pass/fail gate.
+--    Counts are computed from the live tables and are not hard-coded.
+-- ----------------------------------------------------------------------------
+SELECT 'users'::text AS table_name, count(*)::bigint AS row_count FROM public.users
+UNION ALL SELECT 'organizations', count(*) FROM public.organizations
+UNION ALL SELECT 'organization_members', count(*) FROM public.organization_members
+UNION ALL SELECT 'assets', count(*) FROM public.assets
+UNION ALL SELECT 'source_records', count(*) FROM public.source_records
+UNION ALL SELECT 'findings', count(*) FROM public.findings
+UNION ALL SELECT 'correlations', count(*) FROM public.correlations
+UNION ALL SELECT 'investigations', count(*) FROM public.investigations
+UNION ALL SELECT 'audit_events', count(*) FROM public.audit_events
+ORDER BY table_name;
+
+-- ----------------------------------------------------------------------------
+-- 7. Connector security is a separate unapplied artifact.
+--    This statement does not read connections or sync_jobs.
+-- ----------------------------------------------------------------------------
+SELECT
+  'CONNECTOR'::text AS section,
+  'NOT COVERED'::text AS status,
+  'connector security migration = separate / not covered'::text AS detail;
+
+-- ----------------------------------------------------------------------------
 -- 12. Live gate. Earlier statements are the raw catalog evidence.
 --     This statement repeats the reads and computes PASS, FAIL, or NOT VERIFIED.
 --     OVERALL is BLOCKED when a required fact cannot be read, and FAIL when a
@@ -217,6 +255,7 @@ ORDER BY c.relname, t.tgname;
 -- ----------------------------------------------------------------------------
 WITH expected_tables(table_name) AS (
   VALUES
+    ('users'),
     ('organizations'),
     ('organization_members'),
     ('assets'),
@@ -240,6 +279,9 @@ table_facts AS (
 ),
 special_policies(policyname, tablename, polcmd, role_name, using_expr, check_expr) AS (
   VALUES
+    ('users_select_policy', 'users', 'r', 'authenticated', 'id = auth.uid() OR EXISTS (SELECT 1 FROM organization_members om1 JOIN organization_members om2 ON om1.organization_id = om2.organization_id WHERE om1.user_id = auth.uid() AND om2.user_id = users.id)', NULL::text),
+    ('users_insert_policy', 'users', 'a', 'authenticated', NULL::text, 'id = auth.uid()'),
+    ('users_update_policy', 'users', 'w', 'authenticated', 'id = auth.uid()', 'id = auth.uid()'),
     ('org_select_policy', 'organizations', 'r', 'authenticated', 'user_belongs_to_org(id)', NULL::text),
     ('org_insert_policy', 'organizations', 'a', 'public', NULL::text, 'false'),
     ('org_update_policy', 'organizations', 'w', 'public', 'false', 'false'),
@@ -373,7 +415,11 @@ policy_match AS (
     (
       l.policyname IS NOT NULL
       AND l.roles::text[] = ARRAY[e.role_name]::text[]
-    ) AS role_ok
+    ) AS role_ok,
+    (
+      l.roles IS NOT NULL
+      AND 'authenticated'::name = ANY(l.roles)
+    ) AS targets_authenticated
   FROM expected_norm e
   LEFT JOIN live_policies l
     ON l.tablename = e.tablename
@@ -474,6 +520,17 @@ expected_triggers(table_name, trigger_name, function_name, tgtype) AS (
     ('audit_events', 'audit_events_org_immutable', 'reject_organization_id_change', 19),
     ('audit_events', 'audit_events_sensitive_metadata', 'reject_sensitive_audit_metadata', 23)
 ),
+row_counts AS (
+  SELECT 'users'::text AS table_name, count(*)::bigint AS row_count FROM public.users
+  UNION ALL SELECT 'organizations', count(*) FROM public.organizations
+  UNION ALL SELECT 'organization_members', count(*) FROM public.organization_members
+  UNION ALL SELECT 'assets', count(*) FROM public.assets
+  UNION ALL SELECT 'source_records', count(*) FROM public.source_records
+  UNION ALL SELECT 'findings', count(*) FROM public.findings
+  UNION ALL SELECT 'correlations', count(*) FROM public.correlations
+  UNION ALL SELECT 'investigations', count(*) FROM public.investigations
+  UNION ALL SELECT 'audit_events', count(*) FROM public.audit_events
+),
 live_triggers AS (
   SELECT
     c.relname AS table_name,
@@ -514,7 +571,7 @@ trigger_match AS (
 flags AS (
   SELECT
     (
-      (SELECT count(*) FROM table_facts) = 8
+      (SELECT count(*) FROM table_facts) = 9
       AND COALESCE(bool_and(table_exists AND rls_enabled), false)
     ) AS rls_ok
   FROM table_facts
@@ -541,6 +598,15 @@ policy_flags AS (
         'member_insert_policy'
       )
     ), false) AS deny_ok,
+    COALESCE((
+      SELECT count(*) = 3 AND bool_and(structure_ok)
+      FROM policy_match
+      WHERE policyname IN (
+        'users_select_policy',
+        'users_insert_policy',
+        'users_update_policy'
+      )
+    ), false) AS users_policies_ok,
     COALESCE((
       SELECT bool_and(structure_ok)
       FROM policy_match
@@ -620,13 +686,20 @@ function_flags AS (
       SELECT bool_and(
         overload_count = 1
         AND identity_arguments IS NOT DISTINCT FROM expected_identity
+        AND prosecdef
+        AND search_path_norm = 'public,pg_temp'
         AND regexp_replace(lower(COALESCE(prosrc, '')), '[[:space:]]+', '', 'g') IN ('beginreturn;end;', 'beginreturn;end')
       )
       FROM function_rows
       WHERE proname = 'ensure_demo_membership'
     ), false) AS ensure_shape_ok,
     COALESCE((
-      SELECT bool_and(overload_count = 1 AND identity_arguments = expected_identity)
+      SELECT bool_and(
+        overload_count = 1
+        AND identity_arguments = expected_identity
+        AND prosecdef
+        AND search_path_norm = 'public,pg_temp'
+      )
       FROM function_rows
       WHERE proname = 'provision_organization_member'
     ), false) AS provision_shape_ok,
@@ -656,7 +729,7 @@ gate_rows AS (
   UNION ALL
   SELECT 2, 'POLICY COUNT',
     CASE
-      WHEN (SELECT total_policies = 30 AND authenticated_policies = 26 AND other_policies = 4 AND missing_policies = 0 AND unexpected_policies = 0 FROM policy_flags)
+      WHEN (SELECT total_policies = 33 AND authenticated_policies = 29 AND other_policies = 4 AND missing_policies = 0 AND unexpected_policies = 0 FROM policy_flags)
         THEN 'PASS'
       ELSE 'FAIL'
     END
@@ -665,7 +738,7 @@ gate_rows AS (
     CASE
       WHEN (
         SELECT authenticated_targets_ok
-          AND authenticated_policies = 26
+          AND authenticated_policies = 29
           AND NOT EXISTS (
             SELECT 1
             FROM policy_match
@@ -675,7 +748,7 @@ gate_rows AS (
               'org_delete_policy',
               'member_insert_policy'
             )
-              AND roles LIKE '%authenticated%'
+              AND targets_authenticated IS TRUE
           )
         FROM policy_flags
       ) THEN 'PASS'
@@ -690,6 +763,12 @@ gate_rows AS (
       WHEN NOT (SELECT helpers_shape_ok AND ensure_shape_ok AND provision_shape_ok FROM function_flags) THEN 'FAIL'
       WHEN NOT (SELECT anon_exists AND authenticated_exists FROM roles_present) THEN 'NOT VERIFIED'
       WHEN NOT (SELECT helper_privs_ok AND browser_provision_privs_closed FROM function_flags) THEN 'FAIL'
+      WHEN (SELECT service_role_exists FROM roles_present)
+        AND NOT (
+          SELECT service_role_can_execute IS TRUE
+          FROM function_rows
+          WHERE proname = 'provision_organization_member'
+        ) THEN 'FAIL'
       ELSE 'PASS'
     END
   UNION ALL
@@ -758,6 +837,12 @@ gate_rows AS (
       ) THEN 'PASS'
       ELSE 'FAIL'
     END
+  UNION ALL
+  SELECT 12, 'USERS POLICIES',
+    CASE
+      WHEN (SELECT users_policies_ok FROM policy_flags) THEN 'PASS'
+      ELSE 'FAIL'
+    END
 )
 SELECT section, item, status, table_name, command, roles, using_expression, check_expression, detail
 FROM (
@@ -809,7 +894,12 @@ FROM (
     'FUNCTION',
     proname,
     CASE
-      WHEN oid IS NULL OR overload_count <> 1 OR identity_arguments IS DISTINCT FROM expected_identity THEN 'MISMATCH'
+      WHEN oid IS NULL
+        OR overload_count <> 1
+        OR identity_arguments IS DISTINCT FROM expected_identity
+        OR prosecdef IS NOT TRUE
+        OR search_path_norm IS DISTINCT FROM 'public,pg_temp'
+      THEN 'MISMATCH'
       ELSE 'PRESENT'
     END,
     NULL::text,
@@ -847,9 +937,36 @@ FROM (
 
   UNION ALL
   SELECT
+    60,
+    'ROW_COUNT',
+    table_name,
+    'INFO',
+    table_name,
+    NULL::text,
+    NULL::text,
+    NULL::text,
+    NULL::text,
+    'informational row_count=' || row_count::text || '; no rows were modified'
+  FROM row_counts
+
+  UNION ALL
+  SELECT
+    70,
+    'CONNECTOR',
+    'connector security migration',
+    'NOT COVERED',
+    NULL::text,
+    NULL::text,
+    NULL::text,
+    NULL::text,
+    NULL::text,
+    'connector security migration = separate / not covered; connections and sync_jobs are not protected by this migration'
+
+  UNION ALL
+  SELECT
     90,
     'GATE',
-    'PHASE 0D-A LIVE SECURITY VERIFICATION',
+    'P0-C1 LIVE SECURITY VERIFICATION',
     NULL::text,
     NULL::text,
     NULL::text,
@@ -880,7 +997,7 @@ FROM (
     CASE
       WHEN EXISTS (SELECT 1 FROM gate_rows WHERE status = 'FAIL') THEN 'FAIL'
       WHEN EXISTS (SELECT 1 FROM gate_rows WHERE status = 'NOT VERIFIED') THEN 'BLOCKED'
-      WHEN (SELECT count(*) FROM gate_rows WHERE status = 'PASS') = 11 THEN 'PASS'
+      WHEN (SELECT count(*) FROM gate_rows WHERE status = 'PASS') = 12 THEN 'PASS'
       ELSE 'BLOCKED'
     END,
     NULL::text,
